@@ -1,11 +1,83 @@
 const { json } = require('express');
+const express = require('express')
+const fs = require('fs')
+const cors = require('cors');
+const path = require('path');
+const { spawn } = require("child_process");
+
+const app = express();
+const port = 3000;
 
 var mysql = require('mysql');
 
-var usuaris = [{}];
-var productes = [{}];
-var comandes = [{}];
-var itemsComandes = [{}]
+var usuaris = [];
+var productes = [];
+var comandes = [];
+var itemsComandes = [];
+
+app.listen(port, () => {
+  console.log(`Example app listening on port ${port}`)
+})
+
+app.get("/getUsuaris", (req, res) => {
+  if (req.query.id) {
+    const idUsuari = Number(req.query.id);
+    for (const usuari of usuaris) {
+      if (usuari.user_id == idUsuari) {
+        res.json(usuari);
+      } else {
+        res.send(`No hi ha cap usuari amb id: ${idProducte}`);
+      }
+    }
+  } else {
+    res.json(usuaris);
+  }
+});
+
+app.get("/getProductes", (req, res) => {
+  if (req.query.id) {
+    const idProducte = Number(req.query.id);
+    for (const producte of productes) {
+      if (producte.product_id == idProducte) {
+        res.json(producte);
+      } else {
+        res.send(`No hi ha cap producte amb id: ${idProducte}`);
+      }
+    }
+  } else {
+    res.json(productes);
+  }
+});
+
+app.get("/getComandes", (req, res) => {
+  if (req.query.id) {
+    const idComanda = Number(req.query.id);
+    for (const comanda of comandes) {
+      if (comanda.order_id == idComanda) {
+        res.json(comanda);
+      } else {
+        res.send(`No hi ha cap producte amb id: ${idComanda}`);
+      }
+    }
+  } else {
+    res.json(comandes);
+  }
+});
+
+app.get("/getItemsComanda", (req, res) => {
+  var itemsComandesEnviar = [];
+  if (req.query.id) {
+    const idComanda = Number(req.query.id);
+    for (const item of itemsComandes) {
+      if (item.order_id == idComanda) {
+       itemsComandesEnviar.push(item);
+      }
+      res.json(itemsComandesEnviar);
+    }
+  } else {
+    res.json(productes);
+  }
+});
 
 var con = mysql.createConnection({
   host: "localhost",
@@ -28,7 +100,7 @@ function getUsers() {
     if (err) {
       console.error('Error:', err);
     } else {
-      usuaris.push(results);
+      usuaris = results;
     }
   });
 }
@@ -38,7 +110,7 @@ function getProductes() {
     if (err) {
       console.error('Error:', err);
     } else {
-      productes.push(results);
+      productes = results;
     }
   });
 }
@@ -48,7 +120,7 @@ function getComandes() {
     if (err) {
       console.error('Error:', err);
     } else {
-      comandes.push(results);
+      comandes = results;
     }
   });
 }
@@ -58,7 +130,7 @@ function getItemsComandes() {
     if (err) {
       console.error('Error:', err);
     } else {
-      itemsComandes.push(results);
+      itemsComandes = results;
     }
   });
 }
