@@ -15,10 +15,10 @@
     "url": "https://github.com/inspedralbes/transversal-tr1-2024-2025-front-back-dam_24_25_tr1g7/issues"
   },
   "homepage": "https://github.com/inspedralbes/transversal-tr1-2024-2025-front-back-dam_24_25_tr1g7#readme",
-  "description": "",
   "dependencies": {
     "express": "^4.21.1",
     "mysql": "^2.18.1",
     "sockets": "^0.4.2"
-  }
+  },
+  "description": ""
 }
