@@ -9,9 +9,6 @@ const PORT = 5000;
 app.use(cors());
 app.use(express.json());
 
-// Servir archivos estáticos desde la carpeta 'assets'
-app.use('/assets', express.static(path.join(__dirname, 'assets')));
-
 const db = mysql.createConnection({
   host: 'localhost',
   user: 'root',
@@ -27,9 +24,8 @@ db.connect(err => {
   console.log('Conectado a la base de datos MySQL');
 });
 
-// Endpoint para obtener productos
 app.get('/products', (req, res) => {
-  db.query('SELECT * FROM Products', (err, results) => {
+  db.query('SELECT * FROM Products WHERE active = 1', (err, results) => {
     if (err) {
       return res.status(500).send(err);
     }

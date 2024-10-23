@@ -31,7 +31,6 @@
                   </v-btn>
                 </v-card-actions>
               </div>
-              <!-- Aquí aseguramos que la ruta a la imagen sea correcta -->
               <v-img :src="`/assets/image_${producto.product_id}.jpg`" height="350px" width="50%" class="my-4" />
             </v-card>
           </v-col>
