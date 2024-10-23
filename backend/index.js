@@ -1,12 +1,14 @@
 const { json } = require('express');
 const express = require('express');
-const fs = require('fs');
 const cors = require('cors');
 const path = require('path');
 const { spawn } = require("child_process");
 
 const app = express();
+app.use(cors());
 const port = 21345;
+
+app.use('/sources/Imatges', express.static(path.join(__dirname, 'sources/Imatges')))
 
 var mysql = require('mysql2');
 
@@ -17,6 +19,17 @@ var comandes = [];
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`)
 })
+
+app.post("/createUser", (req, res) => {
+	nouUser = {
+		username: req.query.username,
+		password: req.query.password,
+		first_name: req.query.first_name,
+    last_name: req.query.last_name,
+    email: req.query.email
+	};
+	
+});
 
 app.get("/getUsuaris", (req, res) => {
   if (req.query.id) {
@@ -65,20 +78,20 @@ app.get("/getComandes", (req, res) => {
   }
 });
 
-/*var con = mysql.createConnection({
+var con = mysql.createConnection({
   host: "localhost",
   user: "root",
   password: "",
   database: 'a23alechasan_PR1'
-});*/
+});
 
-var con = mysql.createConnection({
+/* var con = mysql.createConnection({
   host: 'localhost',
   user: 'a23alechasan_PR1',
   password: 'Skogsvardet_2024',
   database: 'a23alechasan_PR1',
   port: 3306
-})
+}) */
 
 con.connect(function (err) {
   if (err) throw err;
