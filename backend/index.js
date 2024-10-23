@@ -15,7 +15,6 @@ app.use(cors());
 var usuaris = [];
 var productes = [];
 var comandes = [];
-var itemsComandes = [];
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`)
@@ -66,21 +65,6 @@ app.get("/getComandes", (req, res) => {
   }
 });
 
-app.get("/getItemsComanda", (req, res) => {
-  var itemsComandesEnviar = [];
-  if (req.query.id) {
-    const idComanda = Number(req.query.id);
-    for (const item of itemsComandes) {
-      if (item.order_id == idComanda) {
-       itemsComandesEnviar.push(item);
-      }
-      res.json(itemsComandesEnviar);
-    }
-  } else {
-    res.json(productes);
-  }
-});
-
 var con = mysql.createConnection({
   host: "localhost",
   user: "root",
@@ -101,7 +85,6 @@ con.connect(function (err) {
   console.log("Connected!");
   getUsers();
   getProductes();
-  getItemsComandes();
   getComandes();
 });
 
@@ -116,7 +99,7 @@ function getUsers() {
 }
 
 function getProductes() {
-  con.query('SELECT * FROM Products WHERE active = 1', (err, results, fields) => {
+  con.query('SELECT * FROM Products', (err, results, fields) => {
     if (err) {
       console.error('Error:', err);
     } else {
@@ -131,16 +114,6 @@ function getComandes() {
       console.error('Error:', err);
     } else {
       comandes = results;
-    }
-  });
-}
-
-function getItemsComandes() {
-  con.query('SELECT * FROM OrderItems', (err, results, fields) => {
-    if (err) {
-      console.error('Error:', err);
-    } else {
-      itemsComandes = results;
     }
   });
 }
