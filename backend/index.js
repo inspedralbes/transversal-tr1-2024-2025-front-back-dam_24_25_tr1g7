@@ -16,30 +16,64 @@ var usuaris = [];
 var productes = [];
 var comandes = [];
 
+
+/*var pool = mysql.createPool({
+  host: "localhost",
+  user: "root",
+  password: "",
+  database: 'a23alechasan_PR1',
+  port: 3306,
+  connectionLimit: 10 
+}); */
+
+var pool = mysql.createPool({
+  host: 'localhost',
+  user: 'a23alechasan_PR1',
+  password: 'Skogsvardet_2024',
+  database: 'a23alechasan_PR1',
+  port: 3306,
+  connectionLimit: 10 
+});
+
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`)
 })
 
+pool.getConnection((err, connection) => {
+  if (err) {
+    console.error('Error getting connection from pool:', err);
+    return;
+  }
+  
+  console.log("Connected to the pool!");
+
+  getUsers(connection);
+  getProductes(connection);
+  getComandes(connection);
+
+  connection.release();
+});
+
 app.post("/createUsuari", (req, res) => {
-  const nouUser = {
-    username: req.query.username,
-    password: req.query.password,
-    first_name: req.query.first_name,
-    last_name: req.query.last_name,
-    email: req.query.email
-  };
+    const nouUser = {
+      username: req.query.username,
+      password: req.query.password,
+      first_name: req.query.first_name,
+      last_name: req.query.last_name,
+      email: req.query.email
+    };
 
-  const query = `INSERT INTO Users (username, password, first_name, last_name, email) VALUES (?, ?, ?, ?, ?)`;
-
-  con.query(query, [nouUser.username, nouUser.password, nouUser.first_name, nouUser.last_name, nouUser.email], (err, results, fields) => {
-    if (err) {
-      console.error('Error:', err);
-      res.status(500).send("Error en crear l'usuari");
-    } else {
-      getUsers();
-      res.send("Usuari afegit!");
-    }
-  });
+    const query = `INSERT INTO Users (username, password, first_name, last_name, email) VALUES (?, ?, ?, ?, ?)`;
+  
+    pool.query(query, [nouUser.username, nouUser.password, nouUser.first_name, nouUser.last_name, nouUser.email], (err, results, fields) => {
+      if (err) {
+        console.error('Error:', err);
+        res.status(500).send("Error en crear l'usuari");
+      } else {
+        getUsers();
+        res.send("Usuari afegit!");
+      }
+    });
 });
 
 app.get("/getUsuaris", (req, res) => {
@@ -56,8 +90,6 @@ app.get("/getUsuaris", (req, res) => {
     res.json(usuaris);
   }
 });
-
-
 
 app.get("/getProductes", (req, res) => {
   if (req.query.id) {
@@ -89,31 +121,18 @@ app.get("/getComandes", (req, res) => {
   }
 });
 
-var con = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  password: "",
-  database: 'a23alechasan_PR1'
-}); 
 
-/* var con = mysql.createConnection({
-  host: 'localhost',
-  user: 'a23alechasan_PR1',
-  password: 'Skogsvardet_2024',
-  database: 'a23alechasan_PR1',
-  port: 3306
-}) */
-
-con.connect(function (err) {
+/* pool.conn(function (err) {
   if (err) throw err;
   console.log("Connected!");
   getUsers();
   getProductes();
   getComandes();
-});
+}); */
 
-function getUsers() {
-  con.query('SELECT * FROM Users', (err, results, fields) => {
+
+function getUsers(connection) {
+  connection.query('SELECT * FROM Users', (err, results) => {
     if (err) {
       console.error('Error:', err);
     } else {
@@ -122,8 +141,8 @@ function getUsers() {
   });
 }
 
-function getProductes() {
-  con.query('SELECT * FROM Products', (err, results, fields) => {
+function getProductes(connection) {
+  connection.query('SELECT * FROM Products', (err, results) => {
     if (err) {
       console.error('Error:', err);
     } else {
@@ -132,8 +151,8 @@ function getProductes() {
   });
 }
 
-function getComandes() {
-  con.query('SELECT * FROM Orders', (err, results, fields) => {
+function getComandes(connection) {
+  connection.query('SELECT * FROM Orders', (err, results) => {
     if (err) {
       console.error('Error:', err);
     } else {
