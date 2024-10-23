@@ -24,7 +24,7 @@ var comandes = [];
   database: 'a23alechasan_PR1',
   port: 3306,
   connectionLimit: 10 
-}); */
+});  */
 
 var pool = mysql.createPool({
   host: 'localhost',
@@ -79,6 +79,33 @@ app.post("/createUsuari", (req, res) => {
       } else {
         getUsers(connection);
         res.send("Usuari afegit!");
+        console.log(`Usuari: ${nouUser.username} afegit correctament!`)
+      }
+      connection.release();
+    });
+  });
+});
+
+app.delete("/deleteUsuari", (req, res) => {
+  const idUserEliminar = req.query.id
+
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error getting connection from pool:', err);
+      res.status(500).send("Error al obtenir connexió");
+      return;
+    }
+
+    const query = `DELETE FROM Users WHERE user_id=?;`;
+  
+    connection.query(query, [idUserEliminar], (err, results) => {
+      if (err) {
+        console.error('Error:', err);
+        res.status(500).send("Error en eliminar l'usuari");
+      } else {
+        getUsers(connection);
+        res.send("Usuari eliminat!");
+        console.log(`Usuari amb id: ${idUserEliminar} eliminat correctament!`)
       }
       connection.release();
     });
