@@ -11,25 +11,25 @@ const port = 21345;
 var mysql = require('mysql2');
 
 app.use(cors());
+app.use(express.json()); // Necessari per a processar JSON en el cos de les sol·licituds
 
 var usuaris = [];
 var productes = [];
 var comandes = [];
-var itemsComandes = [];
 
 app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
-})
+  console.log(`Aplicació escoltant al port ${port}`)
+});
 
+// Funcions per obtenir dades
 app.get("/getUsuaris", (req, res) => {
   if (req.query.id) {
     const idUsuari = Number(req.query.id);
-    for (const usuari of usuaris) {
-      if (usuari.user_id == idUsuari) {
-        res.json(usuari);
-      } else {
-        res.send(`No hi ha cap usuari amb id: ${idProducte}`);
-      }
+    const usuari = usuaris.find(usuari => usuari.user_id === idUsuari);
+    if (usuari) {
+      res.json(usuari);
+    } else {
+      res.send(`No hi ha cap usuari amb id: ${idUsuari}`);
     }
   } else {
     res.json(usuaris);
@@ -39,12 +39,11 @@ app.get("/getUsuaris", (req, res) => {
 app.get("/getProductes", (req, res) => {
   if (req.query.id) {
     const idProducte = Number(req.query.id);
-    for (const producte of productes) {
-      if (producte.product_id == idProducte) {
-        res.json(producte);
-      } else {
-        res.send(`No hi ha cap producte amb id: ${idProducte}`);
-      }
+    const producte = productes.find(producte => producte.product_id === idProducte);
+    if (producte) {
+      res.json(producte);
+    } else {
+      res.send(`No hi ha cap producte amb id: ${idProducte}`);
     }
   } else {
     res.json(productes);
@@ -54,59 +53,73 @@ app.get("/getProductes", (req, res) => {
 app.get("/getComandes", (req, res) => {
   if (req.query.id) {
     const idComanda = Number(req.query.id);
-    for (const comanda of comandes) {
-      if (comanda.order_id == idComanda) {
-        res.json(comanda);
-      } else {
-        res.send(`No hi ha cap producte amb id: ${idComanda}`);
-      }
+    const comanda = comandes.find(comanda => comanda.order_id === idComanda);
+    if (comanda) {
+      res.json(comanda);
+    } else {
+      res.send(`No hi ha cap producte amb id: ${idComanda}`);
     }
   } else {
     res.json(comandes);
   }
 });
 
-app.get("/getItemsComanda", (req, res) => {
-  var itemsComandesEnviar = [];
-  if (req.query.id) {
-    const idComanda = Number(req.query.id);
-    for (const item of itemsComandes) {
-      if (item.order_id == idComanda) {
-       itemsComandesEnviar.push(item);
-      }
-      res.json(itemsComandesEnviar);
+app.put('/actualitzarProducte/:id', (req, res) => {
+  const idProducte = Number(req.params.id);
+  const { product_name, description } = req.body; // Aquí extraiem els camps que s'envien
+
+  const query = 'UPDATE Products SET product_name = ?, description = ? WHERE product_id = ?';
+  const values = [product_name, description, idProducte];
+
+  con.query(query, values, (err, result) => {
+    if (err) {
+      console.error('Error actualitzant el producte:', err);
+      res.status(500).send('Error al actualitzar el producte');
+    } else if (result.affectedRows === 0) {
+      res.status(404).send('No s’ha trobat el producte amb aquest ID');
+    } else {
+      res.json({ message: 'Producte actualitzat amb èxit!' });
     }
-  } else {
-    res.json(productes);
-  }
+  });
 });
 
+
+app.delete('/eliminarProducte/:id', (req, res) => {
+  const idProducte = Number(req.params.id);
+
+  const query = 'DELETE FROM Products WHERE product_id = ?';
+  con.query(query, [idProducte], (err, result) => {
+    if (err) {
+      console.error('Error eliminant el producte:', err);
+      res.status(500).send('Error al eliminar el producte');
+    } else if (result.affectedRows === 0) {
+      res.status(404).send('No s’ha trobat el producte amb aquest ID');
+    } else {
+      res.json({ message: 'Producte eliminat amb èxit!' });
+    }
+  });
+});
+
+
+// Connexió a la base de dades MySQL
 var con = mysql.createConnection({
   host: "localhost",
   user: "root",
   password: "",
-  database: 'TR1'
+  database: 'grup7bd'
 });
-
-// var con = mysql.createConnection({
-//   host: 'localhost',
-//   user: 'a23alechasan_PR1',
-//   password: 'Skogsvardet_2024',
-//   database: 'a23alechasan_PR1',
-//   port: 3306
-// })
 
 con.connect(function (err) {
   if (err) throw err;
-  console.log("Connected!");
+  console.log("Connectat a MySQL!");
   getUsers();
   getProductes();
-  getItemsComandes();
   getComandes();
 });
 
+// Funcions per obtenir dades de la base de dades
 function getUsers() {
-  con.query('SELECT * FROM Users', (err, results, fields) => {
+  con.query('SELECT * FROM Users', (err, results) => {
     if (err) {
       console.error('Error:', err);
     } else {
@@ -116,7 +129,7 @@ function getUsers() {
 }
 
 function getProductes() {
-  con.query('SELECT * FROM Products WHERE active = 1', (err, results, fields) => {
+  con.query('SELECT * FROM Products', (err, results) => {
     if (err) {
       console.error('Error:', err);
     } else {
@@ -126,21 +139,11 @@ function getProductes() {
 }
 
 function getComandes() {
-  con.query('SELECT * FROM Orders', (err, results, fields) => {
+  con.query('SELECT * FROM Orders', (err, results) => {
     if (err) {
       console.error('Error:', err);
     } else {
       comandes = results;
-    }
-  });
-}
-
-function getItemsComandes() {
-  con.query('SELECT * FROM OrderItems', (err, results, fields) => {
-    if (err) {
-      console.error('Error:', err);
-    } else {
-      itemsComandes = results;
     }
   });
 }
