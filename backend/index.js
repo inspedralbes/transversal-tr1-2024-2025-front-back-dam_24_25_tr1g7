@@ -20,15 +20,26 @@ app.listen(port, () => {
   console.log(`Example app listening on port ${port}`)
 })
 
-app.post("/createUser", (req, res) => {
-	nouUser = {
-		username: req.query.username,
-		password: req.query.password,
-		first_name: req.query.first_name,
+app.post("/createUsuari", (req, res) => {
+  const nouUser = {
+    username: req.query.username,
+    password: req.query.password,
+    first_name: req.query.first_name,
     last_name: req.query.last_name,
     email: req.query.email
-	};
-	
+  };
+
+  const query = `INSERT INTO Users (username, password, first_name, last_name, email) VALUES (?, ?, ?, ?, ?)`;
+
+  con.query(query, [nouUser.username, nouUser.password, nouUser.first_name, nouUser.last_name, nouUser.email], (err, results, fields) => {
+    if (err) {
+      console.error('Error:', err);
+      res.status(500).send("Error en crear l'usuari");
+    } else {
+      getUsers();
+      res.send("Usuari afegit!");
+    }
+  });
 });
 
 app.get("/getUsuaris", (req, res) => {
@@ -78,20 +89,20 @@ app.get("/getComandes", (req, res) => {
   }
 });
 
-/* var con = mysql.createConnection({
+var con = mysql.createConnection({
   host: "localhost",
   user: "root",
   password: "",
   database: 'a23alechasan_PR1'
-}); */
+}); 
 
-var con = mysql.createConnection({
+/* var con = mysql.createConnection({
   host: 'localhost',
   user: 'a23alechasan_PR1',
   password: 'Skogsvardet_2024',
   database: 'a23alechasan_PR1',
   port: 3306
-})
+}) */
 
 con.connect(function (err) {
   if (err) throw err;
