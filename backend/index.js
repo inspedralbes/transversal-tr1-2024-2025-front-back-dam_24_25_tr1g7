@@ -78,20 +78,20 @@ app.get("/getComandes", (req, res) => {
   }
 });
 
-var con = mysql.createConnection({
+/* var con = mysql.createConnection({
   host: "localhost",
   user: "root",
   password: "",
   database: 'a23alechasan_PR1'
-});
+}); */
 
-/* var con = mysql.createConnection({
+var con = mysql.createConnection({
   host: 'localhost',
   user: 'a23alechasan_PR1',
   password: 'Skogsvardet_2024',
   database: 'a23alechasan_PR1',
   port: 3306
-}) */
+})
 
 con.connect(function (err) {
   if (err) throw err;
