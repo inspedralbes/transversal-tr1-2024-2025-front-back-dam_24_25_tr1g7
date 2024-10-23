@@ -14,7 +14,8 @@
     <v-main>
       <v-container class="mt-10">
         <v-row>
-          <v-col cols="12" md="6" v-for="producto in productos" :key="producto.product_id">
+          <!-- Filtrar productos por product_id de las comandas en estado 'waiting' -->
+          <v-col cols="12" md="6" v-for="producto in productosFiltrados" :key="producto.product_id">
             <v-card class="mt-2 d-flex flex-row" @click="dialogoProducto(producto)">
               <div style="flex-basis: 50%;" class="d-flex flex-column justify-center">
                 <v-card-title class="text-center">{{ producto.product_name }}</v-card-title>
@@ -35,6 +36,17 @@
             </v-card>
           </v-col>
         </v-row>
+
+        <v-row>
+          <v-col cols="12">
+            <h2>Comandes amb estat: Waiting</h2>
+            <v-card v-for="comanda in filteredComandes" :key="comanda.id" class="mt-2">
+              <v-card-title>Comanda ID: {{ comanda.order_id }} - Estat: {{ comanda.status }}</v-card-title>
+              <v-card-subtitle>
+              </v-card-subtitle>
+            </v-card>
+          </v-col>
+        </v-row>
       </v-container>
 
       <v-dialog v-model="dialogoActivo" max-width="600px">
@@ -43,8 +55,7 @@
             <v-icon color="grey">mdi-close</v-icon>
           </v-btn>
 
-          <v-img :src="`/assets/image_${productoSeleccionado.product_id}.jpg`" height="350px" width="50%"
-            class="my-4 mx-auto" />
+          <v-img :src="`/assets/image_${productoSeleccionado.product_id}.jpg`" height="350px" width="50%" class="my-4 mx-auto" />
 
           <v-card-title class="text-center">{{ productoSeleccionado.product_name }}</v-card-title>
 
@@ -66,25 +77,50 @@ export default {
   data() {
     return {
       productos: [],
+      comandes: [],
       dialogoActivo: false,
       productoSeleccionado: {},
-      url: 'http://localhost:21345/getProductes'
+      urlProductos: 'http://localhost:21345/getProductes',
+      urlComandes: 'http://localhost:21345/getComandes?status=waiting'
     };
+  },
+  computed: {
+    productosFiltrados() {
+      const productIdsEnWaiting = this.comandes
+        .filter(comanda => comanda.status === 'waiting')
+        .map(comanda => comanda.product_id);
+
+      return this.productos.filter(producto => productIdsEnWaiting.includes(producto.product_id));
+    },
+    filteredComandes() {
+      return this.comandes.filter(comanda => comanda.status === 'waiting');
+    }
   },
   mounted() {
     this.obtenerProductos();
+    this.obtenerComandes();
   },
   methods: {
     async obtenerProductos() {
       try {
-        const response = await fetch(this.url);
+        const response = await fetch(this.urlProductos);
         if (!response.ok) {
           throw new Error('Error en la respuesta de la red');
         }
         this.productos = await response.json();
-        console.log(this.productos);
       } catch (error) {
         console.error('Error al obtener productos:', error);
+      }
+    },
+    async obtenerComandes() {
+      try {
+        const response = await fetch(this.urlComandes);
+        if (!response.ok) {
+          throw new Error('Error en la respuesta de la red');
+        }
+        this.comandes = await response.json();
+      } catch (error) {
+        console.error('Error al obtener comandes:', error);
       }
     },
     aceptarProducto(id) {

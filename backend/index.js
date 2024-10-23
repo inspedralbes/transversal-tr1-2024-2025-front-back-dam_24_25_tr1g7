@@ -51,18 +51,21 @@ app.get("/getProductes", (req, res) => {
 });
 
 app.get("/getComandes", (req, res) => {
-  if (req.query.id) {
-    const idComanda = Number(req.query.id);
-    for (const comanda of comandes) {
-      if (comanda.order_id == idComanda) {
-        res.json(comanda);
-      } else {
-        res.send(`No hi ha cap producte amb id: ${idComanda}`);
-      }
-    }
-  } else {
-    res.json(comandes);
+  let query = 'SELECT * FROM Orders';
+  const status = req.query.status;
+
+  if (status) {
+    query += ` WHERE status = ?`;
   }
+
+  con.query(query, [status], (err, results) => {
+    if (err) {
+      console.error('Error:', err);
+      res.status(500).send('Error en la consulta a la base de datos');
+    } else {
+      res.json(results);
+    }
+  });
 });
 
 var con = mysql.createConnection({
