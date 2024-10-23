@@ -17,7 +17,7 @@ var productes = [];
 var comandes = [];
 
 
-/*var pool = mysql.createPool({
+/* var pool = mysql.createPool({
   host: "localhost",
   user: "root",
   password: "",
@@ -55,25 +55,34 @@ pool.getConnection((err, connection) => {
 });
 
 app.post("/createUsuari", (req, res) => {
-    const nouUser = {
-      username: req.query.username,
-      password: req.query.password,
-      first_name: req.query.first_name,
-      last_name: req.query.last_name,
-      email: req.query.email
-    };
+  const nouUser = {
+    username: req.query.username,
+    password: req.query.password,
+    first_name: req.query.first_name,
+    last_name: req.query.last_name,
+    email: req.query.email
+  };
+  
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error getting connection from pool:', err);
+      res.status(500).send("Error al obtenir connexió");
+      return;
+    }
 
     const query = `INSERT INTO Users (username, password, first_name, last_name, email) VALUES (?, ?, ?, ?, ?)`;
   
-    pool.query(query, [nouUser.username, nouUser.password, nouUser.first_name, nouUser.last_name, nouUser.email], (err, results, fields) => {
+    connection.query(query, [nouUser.username, nouUser.password, nouUser.first_name, nouUser.last_name, nouUser.email], (err, results) => {
       if (err) {
         console.error('Error:', err);
         res.status(500).send("Error en crear l'usuari");
       } else {
-        getUsers();
+        getUsers(connection);
         res.send("Usuari afegit!");
       }
+      connection.release();
     });
+  });
 });
 
 app.get("/getUsuaris", (req, res) => {
@@ -120,16 +129,6 @@ app.get("/getComandes", (req, res) => {
     res.json(comandes);
   }
 });
-
-
-/* pool.conn(function (err) {
-  if (err) throw err;
-  console.log("Connected!");
-  getUsers();
-  getProductes();
-  getComandes();
-}); */
-
 
 function getUsers(connection) {
   connection.query('SELECT * FROM Users', (err, results) => {
