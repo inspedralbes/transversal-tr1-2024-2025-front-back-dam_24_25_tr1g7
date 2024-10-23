@@ -1,14 +1,14 @@
 const { json } = require('express');
-const express = require('express')
-const fs = require('fs')
+const express = require('express');
+const fs = require('fs');
 const cors = require('cors');
 const path = require('path');
 const { spawn } = require("child_process");
 
 const app = express();
-const port = 3000;
+const port = 21345;
 
-var mysql = require('mysql');
+var mysql = require('mysql2');
 
 var usuaris = [];
 var productes = [];
@@ -33,6 +33,8 @@ app.get("/getUsuaris", (req, res) => {
     res.json(usuaris);
   }
 });
+
+
 
 app.get("/getProductes", (req, res) => {
   if (req.query.id) {
@@ -79,12 +81,20 @@ app.get("/getItemsComanda", (req, res) => {
   }
 });
 
-var con = mysql.createConnection({
+/*var con = mysql.createConnection({
   host: "localhost",
   user: "root",
   password: "",
   database: 'a23alechasan_PR1'
-});
+});*/
+
+var con = mysql.createConnection({
+  host: 'localhost',
+  user: 'a23alechasan_PR1',
+  password: 'Skogsvardet_2024',
+  database: 'a23alechasan_PR1',
+  port: 3306
+})
 
 con.connect(function (err) {
   if (err) throw err;
@@ -96,7 +106,7 @@ con.connect(function (err) {
 });
 
 function getUsers() {
-  con.query('SELECT * FROM users', (err, results, fields) => {
+  con.query('SELECT * FROM Users', (err, results, fields) => {
     if (err) {
       console.error('Error:', err);
     } else {
@@ -106,7 +116,7 @@ function getUsers() {
 }
 
 function getProductes() {
-  con.query('SELECT * FROM products', (err, results, fields) => {
+  con.query('SELECT * FROM Products', (err, results, fields) => {
     if (err) {
       console.error('Error:', err);
     } else {
@@ -116,7 +126,7 @@ function getProductes() {
 }
 
 function getComandes() {
-  con.query('SELECT * FROM orders', (err, results, fields) => {
+  con.query('SELECT * FROM Orders', (err, results, fields) => {
     if (err) {
       console.error('Error:', err);
     } else {
@@ -126,7 +136,7 @@ function getComandes() {
 }
 
 function getItemsComandes() {
-  con.query('SELECT * FROM orderitems', (err, results, fields) => {
+  con.query('SELECT * FROM OrderItems', (err, results, fields) => {
     if (err) {
       console.error('Error:', err);
     } else {
