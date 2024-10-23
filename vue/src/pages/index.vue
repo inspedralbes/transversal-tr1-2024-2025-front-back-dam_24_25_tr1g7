@@ -43,7 +43,8 @@
             <v-icon color="grey">mdi-close</v-icon>
           </v-btn>
 
-            <v-img :src="`/assets/image_${productoSeleccionado.product_id}.jpg`" height="350px" width="50%" class="my-4 mx-auto" />
+          <v-img :src="`/assets/image_${productoSeleccionado.product_id}.jpg`" height="350px" width="50%"
+            class="my-4 mx-auto" />
 
           <v-card-title class="text-center">{{ productoSeleccionado.product_name }}</v-card-title>
 
@@ -66,7 +67,8 @@ export default {
     return {
       productos: [],
       dialogoActivo: false,
-      productoSeleccionado: {}
+      productoSeleccionado: {},
+      url: 'http://localhost:21345/getProductes'
     };
   },
   mounted() {
@@ -75,7 +77,7 @@ export default {
   methods: {
     async obtenerProductos() {
       try {
-        const response = await fetch('http://localhost:5000/products');
+        const response = await fetch(this.url);
         if (!response.ok) {
           throw new Error('Error en la respuesta de la red');
         }
