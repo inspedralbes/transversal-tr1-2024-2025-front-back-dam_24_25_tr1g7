@@ -20,7 +20,7 @@
                                     </v-card-subtitle>
                                 </v-card-text>
                             </div>
-                            <v-img :src="`/assets/image_${comanda.product_id}.jpg`" height="350px" width="50%"
+                            <v-img :src="`http://dam.inspedralbes.cat:21345/sources/Imatges/${producto.image_file}`" height="350px" width="50%"
                                 class="my-4 mx-auto" />
                         </v-card>
                     </v-col>
@@ -32,7 +32,7 @@
                     <v-btn icon @click="dialogoActivo = false" class="ml-auto mt-2 mr-2">
                         <v-icon color="grey">mdi-close</v-icon>
                     </v-btn>
-                    <v-img :src="`/assets/image_${comandaSeleccionada.product_id}.jpg`" height="350px" width="50%"
+                    <v-img :src="`http://dam.inspedralbes.cat:21345/sources/Imatges/${producto.image_file}`" height="350px" width="50%"
                         class="my-2 mx-auto" />
                     <v-card-text class="text-center">
                         {{ comandaSeleccionada.description }}
@@ -61,8 +61,8 @@ export default {
             dialogoActivo: false,
             comandaSeleccionada: {},
             productoSeleccionado: {},
-            urlComandes: 'http://localhost:21345/getComandes',
-            urlProductos: 'http://localhost:21345/getProductes'
+            urlComandes: 'http://dam.inspedralbes.cat:21345/getComandes',
+            urlProductos: 'http://dam.inspedralbes.cat:21345/getProductes'
         };
     },
     computed: {

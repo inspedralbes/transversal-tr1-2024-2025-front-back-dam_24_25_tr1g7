@@ -15,7 +15,7 @@
             <v-card class="mt-2">
               <v-card-title class="text-center">{{ producto.product_name }}</v-card-title>
               <v-card-subtitle class="text-center">{{ producto.description }}</v-card-subtitle>
-              <v-img :src="`/assets/image_${producto.product_id}.jpg`" height="350px" class="my-4" />
+              <v-img :src="`http://dam.inspedralbes.cat:21345/sources/Imatges/${producto.image_file}`" height="350px" class="my-4" />
               <v-card-actions class="d-flex justify-center">
                 <v-btn icon @click="editarProducto(producto)">
                   <v-icon color="blue">mdi-pencil</v-icon>
@@ -58,7 +58,7 @@ export default {
       productos: [],
       productoEditado: null, // Producte que s'està editant
       dialogoEditarActivo: false, // Controla la visibilitat del diàleg d'edició
-      url: 'http://localhost:21345/getProductes' // URL de l'API
+      url: 'http://dam.inspedralbes.cat:21345/getProductes' // URL de l'API
     };
   },
   mounted() {
@@ -95,7 +95,7 @@ export default {
           stock: this.productoEditado.stock
         });
 
-        const response = await fetch(`http://localhost:21345/updateProducte?${params.toString()}`, {
+        const response = await fetch(`http://dam.inspedralbes.cat:21345/updateProducte?${params.toString()}`, {
           method: 'PUT',
         });
 
@@ -116,7 +116,7 @@ export default {
     async eliminarProducto(id) {
       if (confirm('Estàs segur d’eliminar aquest producte?')) {
         try {
-          const response = await fetch(`http://localhost:21345/deleteProducte?product_id=${id}`, {
+          const response = await fetch(`http://dam.inspedralbes.cat:21345/deleteProducte?product_id=${id}`, {
             method: 'DELETE'
           });
           if (!response.ok) {

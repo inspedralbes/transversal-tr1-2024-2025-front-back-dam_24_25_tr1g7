@@ -22,7 +22,7 @@
                   </v-btn>
                 </v-card-actions>
               </div>
-              <v-img :src="`/assets/image_${producto.product_id}.jpg`" height="350px" width="50%" class="my-4" />
+              <v-img :src="`http://dam.inspedralbes.cat:21345/sources/Imatges/${producto.image_file}`" height="350px" width="50%" class="my-4" />
             </v-card>
           </v-col>
         </v-row>
@@ -33,7 +33,7 @@
           <v-btn icon @click="dialogoActivo = false" class="ml-auto mt-2 mr-2">
             <v-icon color="grey">mdi-close</v-icon>
           </v-btn>
-          <v-img :src="`/assets/image_${productoSeleccionado.product_id}.jpg`" height="350px" width="50%"
+          <v-img :src="`http://dam.inspedralbes.cat:21345/sources/Imatges/${producto.image_file}`" height="350px" width="50%"
             class="my-4 mx-auto" />
           <v-card-title class="text-center">{{ productoSeleccionado.product_name }}</v-card-title>
           <v-card-text class="text-center">
@@ -58,8 +58,8 @@ export default {
       dialogoActivo: false,
       productoSeleccionado: {},
       ordenSeleccionada: null,
-      urlProductos: 'http://localhost:21345/getProductes',
-      urlComandes: 'http://localhost:21345/getComandes?status=verified'
+      urlProductos: 'http://dam.inspedralbes.cat:21345/getProductes',
+      urlComandes: 'http://dam.inspedralbes.cat:21345/getComandes?status=verified'
     };
   },
   computed: {
@@ -103,7 +103,7 @@ export default {
     async aceptarProducto(id) {
       const producto = this.comandes.find(c => c.product_id === id);
       try {
-        const response = await fetch(`http://localhost:21345/confirmed?order_id=${producto.order_id}`, {
+        const response = await fetch(`http://dam.inspedralbes.cat:21345/confirmed?order_id=${producto.order_id}`, {
           method: 'PUT',
         });
         if (!response.ok) {
@@ -120,7 +120,7 @@ export default {
       const producto = this.comandes.find(c => c.product_id === id);
       if (producto) {
         try {
-          const response = await fetch(`http://localhost:21345/canceled?order_id=${producto.order_id}`, {
+          const response = await fetch(`http://dam.inspedralbes.cat:21345/canceled?order_id=${producto.order_id}`, {
             method: 'PUT',
           });
           if (!response.ok) {
