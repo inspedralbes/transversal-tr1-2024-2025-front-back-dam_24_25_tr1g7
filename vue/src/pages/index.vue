@@ -33,7 +33,8 @@
           <v-btn icon @click="dialogoActivo = false" class="ml-auto mt-2 mr-2">
             <v-icon color="grey">mdi-close</v-icon>
           </v-btn>
-          <v-img :src="`/assets/image_${productoSeleccionado.product_id}.jpg`" height="350px" width="50%" class="my-4 mx-auto" />
+          <v-img :src="`/assets/image_${productoSeleccionado.product_id}.jpg`" height="350px" width="50%"
+            class="my-4 mx-auto" />
           <v-card-title class="text-center">{{ productoSeleccionado.product_name }}</v-card-title>
           <v-card-text class="text-center">
             {{ productoSeleccionado.description }}
@@ -94,27 +95,48 @@ export default {
         console.error('Error al obtener comandes:', error);
       }
     },
-    aceptarProducto(id) {
-      const producto = this.productos.find(p => p.product_id === id);
-      if (producto) {
-        producto.estado = 'preparación';
-        alert(`Producto ${producto.product_name} aceptado y puesto en preparación.`);
+    async aceptarProducto(id) {
+      const producto = this.comandes.find(c => c.product_id === id);
+      try {
+        const response = await fetch(`http://localhost:21345/confirmed?order_id=${producto.order_id}`, {
+          method: 'PUT',
+        });
+        if (!response.ok) {
+          throw new Error('Error al actualizar el estado del producto');
+        }
+        // Actualiza el estado en la vista
+        producto.status = 'confirmed';
+        alert(`Producto ${producto.product_name} aceptado y confirmado.`);
+      } catch (error) {
+        console.error('Error al aceptar producto:', error);
+        alert('Error al aceptar producto.');
       }
-    },
-    rechazarProducto(id) {
-      const producto = this.productos.find(p => p.product_id === id);
-      if (producto) {
-        producto.estado = 'rechazado';
-        alert(`Producto ${producto.product_name} rechazado.`);
-      }
-    },
-    dialogoProducto(producto) {
-      this.productoSeleccionado = producto;
-      this.ordenSeleccionada = this.comandes.find(comanda => comanda.product_id === producto.product_id) || null;
-      this.dialogoActivo = true;
     }
+  },
+  async rechazarProducto(id) {
+    const producto = this.comandes.find(c => c.product_id === id);
+    if (producto) {
+      try {
+        const response = await fetch(`http://localhost:21345/canceled?order_id=${producto.order_id}`, {
+          method: 'PUT',
+        });
+        if (!response.ok) {
+          throw new Error('Error al actualizar el estado del producto');
+        }
+        producto.status = 'canceled';
+        alert(`Producto ${producto.product_name} rechazado.`);
+      } catch (error) {
+        console.error('Error al rechazar producto:', error);
+        alert('Error al rechazar producto.');
+      }
+    }
+  },
+  dialogoProducto(producto) {
+    this.productoSeleccionado = producto;
+    this.ordenSeleccionada = this.comandes.find(comanda => comanda.product_id === producto.product_id) || null;
+    this.dialogoActivo = true;
   }
-};
+}
 </script>
 
 <style scoped>
