@@ -1,125 +1,342 @@
+/*<-------------------------------------- Variables ---------------------------------------->*/
+
 const { json } = require('express');
 const express = require('express');
-const fs = require('fs');
 const cors = require('cors');
 const path = require('path');
 const { spawn } = require("child_process");
 
 const app = express();
+app.use(cors());
 const port = 21345;
 
-var mysql = require('mysql2');
 
-app.use(cors());
-app.use(express.json()); // Necessari per a processar JSON en el cos de les sol·licituds
+app.use('/sources/Imatges', express.static(path.join(__dirname, 'sources/Imatges')))
+
+var mysql = require('mysql2');
 
 var usuaris = [];
 var productes = [];
 var comandes = [];
 
-app.listen(port, () => {
-  console.log(`Aplicació escoltant al port ${port}`)
+
+/*<-------------------------------------- Connexions ---------------------------------------->*/
+
+var pool = mysql.createPool({
+  host: "localhost",
+  user: "root",
+  password: "",
+  database: 'grup7bd',
+  port: 3306,
+  connectionLimit: 10 
 });
 
-// Funcions per obtenir dades
+/*var pool = mysql.createPool({
+  host: 'localhost',
+  user: 'a23alechasan_PR1',
+  password: 'Skogsvardet_2024',
+  database: 'a23alechasan_PR1',
+  port: 3306,
+  connectionLimit: 10 
+});/*
+
+
+/*<-------------------------------------- Usuaris ---------------------------------------->*/
+
 app.get("/getUsuaris", (req, res) => {
-  if (req.query.id) {
+  if (req.query.user_id) {
     const idUsuari = Number(req.query.id);
-    const usuari = usuaris.find(usuari => usuari.user_id === idUsuari);
-    if (usuari) {
-      res.json(usuari);
-    } else {
-      res.send(`No hi ha cap usuari amb id: ${idUsuari}`);
+    for (const usuari of usuaris) {
+      if (usuari.user_id == idUsuari) {
+        res.json(usuari);
+      } else {
+        res.send(`No hi ha cap usuari amb id: ${idUsuari}`);
+      }
     }
   } else {
     res.json(usuaris);
   }
 });
 
+app.post("/createUsuari", (req, res) => {
+  const nouUser = {
+    username: req.query.username,
+    password: req.query.password,
+    first_name: req.query.first_name,
+    last_name: req.query.last_name,
+    email: req.query.email
+  };
+  
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error getting connection from pool:', err);
+      res.status(500).send("Error al obtenir connexió");
+      return;
+    }
+
+    const query = `INSERT INTO Users (username, password, first_name, last_name, email) VALUES (?, ?, ?, ?, ?)`;
+  
+    connection.query(query, [nouUser.username, nouUser.password, nouUser.first_name, nouUser.last_name, nouUser.email], (err, results) => {
+      if (err) {
+        console.error('Error:', err);
+        res.status(500).send("Error en crear l'usuari");
+      } else {
+        getUsers(connection);
+        res.send("Usuari afegit!");
+        console.log(`Usuari: ${nouUser.username} afegit correctament!`)
+      }
+      connection.release();
+    });
+  });
+});
+
+app.delete("/deleteUsuari", (req, res) => {
+  const idUserEliminar = req.query.user_id
+
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error getting connection from pool:', err);
+      res.status(500).send("Error al obtenir connexió");
+      return;
+    }
+
+    const query = `DELETE FROM Users WHERE user_id=?;`;
+  
+    connection.query(query, [idUserEliminar], (err, results) => {
+      if (err) {
+        console.error('Error:', err);
+        res.status(500).send("Error en eliminar l'usuari");
+      } else {
+        getUsers(connection);
+        res.send("Usuari eliminat!");
+        console.log(`Usuari amb id: ${idUserEliminar} eliminat correctament!`)
+      }
+      connection.release();
+    });
+  });
+});
+
+app.put("/updateUsuari", (req, res) => {
+  const user = {
+    user_id: req.query.user_id,
+    username: req.query.username,
+    password: req.query.password,
+    first_name: req.query.first_name,
+    last_name: req.query.last_name,
+    email: req.query.email
+  };
+  
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error getting connection from pool:', err);
+      res.status(500).send("Error al obtenir connexió");
+      return;
+    }
+
+    const query = `UPDATE Users SET username = ?, password = ?, first_name = ?, last_name = ?, email = ?  WHERE user_id = ?`;
+  
+    connection.query(query, [user.username, user.password, user.first_name, user.last_name, user.email, user.user_id], (err, results) => {
+      if (err) {
+        console.error('Error:', err);
+        res.status(500).send("Error en actualitzar l'usuari");
+      } else {
+        getUsers(connection);
+        res.send("Usuari actualitzat!");
+        console.log(`Usuari: ${user.username} actualitzat correctament!`)
+      }
+      connection.release();
+    }); 
+  });
+});
+
+/*<-------------------------------------- Productes ---------------------------------------->*/
+
 app.get("/getProductes", (req, res) => {
-  if (req.query.id) {
+  if (req.query.product_id) {
     const idProducte = Number(req.query.id);
-    const producte = productes.find(producte => producte.product_id === idProducte);
-    if (producte) {
-      res.json(producte);
-    } else {
-      res.send(`No hi ha cap producte amb id: ${idProducte}`);
+    for (const producte of productes) {
+      if (producte.product_id == idProducte) {
+        res.json(producte);
+      } else {
+        res.send(`No hi ha cap producte amb id: ${idProducte}`);
+      }
     }
   } else {
     res.json(productes);
   }
 });
 
+/*<-------------------------------------- Comandes ---------------------------------------->*/
+
 app.get("/getComandes", (req, res) => {
-  if (req.query.id) {
+  if (req.query.order_id) {
     const idComanda = Number(req.query.id);
-    const comanda = comandes.find(comanda => comanda.order_id === idComanda);
-    if (comanda) {
-      res.json(comanda);
-    } else {
-      res.send(`No hi ha cap producte amb id: ${idComanda}`);
+    for (const comanda of comandes) {
+      if (comanda.order_id == idComanda) {
+        res.json(comanda);
+      } else {
+        res.send(`No hi ha cap producte amb id: ${idComanda}`);
+      }
     }
   } else {
     res.json(comandes);
   }
 });
 
-app.put('/actualitzarProducte/:id', (req, res) => {
-  const idProducte = Number(req.params.id);
-  const { product_name, description } = req.body; // Aquí extraiem els camps que s'envien
-
-  const query = 'UPDATE Products SET product_name = ?, description = ? WHERE product_id = ?';
-  const values = [product_name, description, idProducte];
-
-  con.query(query, values, (err, result) => {
+app.put("/pending", (req, res) => {
+  const order_id = req.query.order_id
+  
+  pool.getConnection((err, connection) => {
     if (err) {
-      console.error('Error actualitzant el producte:', err);
-      res.status(500).send('Error al actualitzar el producte');
-    } else if (result.affectedRows === 0) {
-      res.status(404).send('No s’ha trobat el producte amb aquest ID');
-    } else {
-      res.json({ message: 'Producte actualitzat amb èxit!' });
+      console.error('Error getting connection from pool:', err);
+      res.status(500).send("Error al obtenir connexió");
+      return;
     }
+
+    const query = `UPDATE Orders SET status = 'pending' WHERE order_id = ?`;
+  
+    connection.query(query, [order_id], (err, results) => {
+      if (err) {
+        console.error('Error:', err);
+        res.status(500).send("Error en actualitzar l'ordre");
+      } else {
+        getComandes(connection);
+        res.send("Ordre actualitzada a 'pending'!");
+        console.log(`L'ordre: ${order_id} està 'pending'!`)
+      }
+      connection.release();
+    }); 
   });
 });
 
-
-app.delete('/eliminarProducte/:id', (req, res) => {
-  const idProducte = Number(req.params.id);
-
-  const query = 'DELETE FROM Products WHERE product_id = ?';
-  con.query(query, [idProducte], (err, result) => {
+app.put("/shipped", (req, res) => {
+  const order_id = req.query.order_id
+  
+  pool.getConnection((err, connection) => {
     if (err) {
-      console.error('Error eliminant el producte:', err);
-      res.status(500).send('Error al eliminar el producte');
-    } else if (result.affectedRows === 0) {
-      res.status(404).send('No s’ha trobat el producte amb aquest ID');
-    } else {
-      res.json({ message: 'Producte eliminat amb èxit!' });
+      console.error('Error getting connection from pool:', err);
+      res.status(500).send("Error al obtenir connexió");
+      return;
     }
+
+    const query = `UPDATE Orders SET status = 'shipped' WHERE order_id = ?`;
+  
+    connection.query(query, [order_id], (err, results) => {
+      if (err) {
+        console.error('Error:', err);
+        res.status(500).send("Error en actualitzar l'ordre");
+      } else {
+        getComandes(connection);
+        res.send("Ordre actualitzada a 'shipped'!");
+        console.log(`L'ordre: ${order_id} ha estat enviada`)
+      }
+      connection.release();
+    }); 
   });
 });
 
+app.put("/verified", (req, res) => {
+  const order_id = req.query.order_id
+  
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error getting connection from pool:', err);
+      res.status(500).send("Error al obtenir connexió");
+      return;
+    }
 
-// Connexió a la base de dades MySQL
-var con = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  password: "",
-  database: 'grup7bd'
+    const query = `UPDATE Orders SET status = 'verified' WHERE order_id = ?`;
+  
+    connection.query(query, [order_id], (err, results) => {
+      if (err) {
+        console.error('Error:', err);
+        res.status(500).send("Error en actualitzar l'ordre");
+      } else {
+        getComandes(connection);
+        res.send("Ordre actualitzada a 'verified'!");
+        console.log(`L'ordre: ${order_id} ha estat verificada`)
+      }
+      connection.release();
+    }); 
+  });
 });
 
-con.connect(function (err) {
-  if (err) throw err;
-  console.log("Connectat a MySQL!");
-  getUsers();
-  getProductes();
-  getComandes();
+app.put("/confirmed", (req, res) => {
+  const order_id = req.query.order_id
+  
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error getting connection from pool:', err);
+      res.status(500).send("Error al obtenir connexió");
+      return;
+    }
+
+    const query = `UPDATE Orders SET status = 'confirmed' WHERE order_id = ?`;
+  
+    connection.query(query, [order_id], (err, results) => {
+      if (err) {
+        console.error('Error:', err);
+        res.status(500).send("Error en actualitzar l'ordre");
+      } else {
+        getComandes(connection);
+        res.send("Ordre actualitzada a 'confirmed'!");
+        console.log(`L'ordre: ${order_id} ha estat confirmada`)
+      }
+      connection.release();
+    }); 
+  });
 });
 
-// Funcions per obtenir dades de la base de dades
-function getUsers() {
-  con.query('SELECT * FROM Users', (err, results) => {
+app.put("/canceled", (req, res) => {
+  const order_id = req.query.order_id
+  
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error getting connection from pool:', err);
+      res.status(500).send("Error al obtenir connexió");
+      return;
+    }
+
+    const query = `UPDATE Orders SET status = 'canceled' WHERE order_id = ?`;
+  
+    connection.query(query, [order_id], (err, results) => {
+      if (err) {
+        console.error('Error:', err);
+        res.status(500).send("Error en actualitzar l'ordre");
+      } else {
+        esborrarComanda(connection, order_id)
+        getComandes(connection);
+        res.send("Ordre actualitzada a 'canceled'!");
+        console.log(`L'ordre: ${order_id} ha estat cancelada`)
+      }
+      connection.release();
+    }); 
+  });
+});
+
+/*<-------------------------------------- Inici App ---------------------------------------->*/
+
+app.listen(port, () => {
+  console.log(`Example app listening on port ${port}`)
+})
+
+pool.getConnection((err, connection) => {
+  if (err) {
+    console.error('Error getting connection from pool:', err);
+    return;
+  }
+  
+  console.log("Connected to the pool!");
+
+  getUsers(connection);
+  getProductes(connection);
+  getComandes(connection);
+
+  connection.release();
+});
+
+function getUsers(connection) {
+  connection.query('SELECT * FROM Users', (err, results) => {
     if (err) {
       console.error('Error:', err);
     } else {
@@ -128,8 +345,8 @@ function getUsers() {
   });
 }
 
-function getProductes() {
-  con.query('SELECT * FROM Products', (err, results) => {
+function getProductes(connection) {
+  connection.query('SELECT * FROM Products', (err, results) => {
     if (err) {
       console.error('Error:', err);
     } else {
@@ -138,8 +355,8 @@ function getProductes() {
   });
 }
 
-function getComandes() {
-  con.query('SELECT * FROM Orders', (err, results) => {
+function getComandes(connection) {
+  connection.query('SELECT * FROM Orders', (err, results) => {
     if (err) {
       console.error('Error:', err);
     } else {
@@ -147,3 +364,87 @@ function getComandes() {
     }
   });
 }
+
+function esborrarComanda(connection ,order_id) {
+  const query = `DELETE FROM Orders WHERE order_id=?;`;
+  connection.query(query, [order_id], (err, results) => {
+    if (err) {
+      console.error('Error:', err);
+    } else {
+      getUsers(connection);
+      console.log(`Ordre amb id: ${order_id} eliminada correctament!`)
+    }
+    connection.release();
+  });
+}
+
+
+//------------------------------------Productes Edit/Esborrar-----------------------------
+
+app.put('/actualitzarProducte/:id', (req, res) => {
+  const idProducte = Number(req.params.id);
+  let body = '';
+
+  // Rebem el cos de la petició manualment
+  req.on('data', chunk => {
+    body += chunk.toString(); // Anem acumulant les dades
+  });
+
+  req.on('end', () => {
+    try {
+      // Convertim el cos en un objecte JSON
+      const { product_name, description } = JSON.parse(body);
+
+      pool.getConnection((err, connection) => {
+        if (err) {
+          console.error('Error obtenint connexió del pool:', err);
+          res.status(500).send('Error al obtenir la connexió');
+          return;
+        }
+
+        const query = 'UPDATE Products SET product_name = ?, description = ? WHERE product_id = ?';
+        const values = [product_name, description, idProducte];
+
+        connection.query(query, values, (err, result) => {
+          if (err) {
+            console.error('Error actualitzant el producte:', err);
+            res.status(500).send('Error al actualitzar el producte');
+          } else if (result.affectedRows === 0) {
+            res.status(404).send('No s’ha trobat el producte amb aquest ID');
+          } else {
+            res.json({ message: 'Producte actualitzat amb èxit!' });
+          }
+          connection.release(); // Alliberem la connexió
+        });
+      });
+    } catch (err) {
+      console.error('Error analitzant JSON:', err);
+      res.status(400).send('Error en el format JSON');
+    }
+  });
+});
+
+app.delete('/eliminarProducte/:id', (req, res) => {
+  const idProducte = Number(req.params.id);
+
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error obtenint connexió del pool:', err);
+      res.status(500).send('Error al obtenir la connexió');
+      return;
+    }
+
+    const query = 'DELETE FROM Products WHERE product_id = ?';
+    connection.query(query, [idProducte], (err, result) => {
+      if (err) {
+        console.error('Error eliminant el producte:', err);
+        res.status(500).send('Error al eliminar el producte');
+      } else if (result.affectedRows === 0) {
+        res.status(404).send('No s’ha trobat el producte amb aquest ID');
+      } else {
+        res.json({ message: 'Producte eliminat amb èxit!' });
+      }
+      connection.release(); // Alliberem la connexió
+    });
+  });
+});
