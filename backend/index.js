@@ -54,11 +54,13 @@ app.get("/getComandes", (req, res) => {
   let query = 'SELECT * FROM Orders';
   const status = req.query.status;
 
-  if (status) {
+  if (status === 'not-waiting') {
+    query += ` WHERE status != 'waiting'`;
+  } else if (status) {
     query += ` WHERE status = ?`;
   }
 
-  con.query(query, [status], (err, results) => {
+  con.query(query, status && status !== 'not-waiting' ? [status] : [], (err, results) => {
     if (err) {
       console.error('Error:', err);
       res.status(500).send('Error en la consulta a la base de datos');
@@ -67,6 +69,7 @@ app.get("/getComandes", (req, res) => {
     }
   });
 });
+
 
 var con = mysql.createConnection({
   host: "localhost",

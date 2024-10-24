@@ -3,9 +3,6 @@
         <v-app-bar app color="primary" dark>
             <v-toolbar-title>Gestió de comandes</v-toolbar-title>
             <v-spacer></v-spacer>
-            <router-link to="/gestioComandes" style="text-decoration: none; color: white;">
-                <v-btn text @click="irAGestioComandes">Gestió Comandes</v-btn>
-            </router-link>
             <router-link to="/gestioProductes" style="text-decoration: none; color: white;">
                 <v-btn text @click="irAGestioProductes">Gestió Productes</v-btn>
             </router-link>
@@ -20,7 +17,7 @@
                             <v-card-subtitle class="text-center">{{ comanda.description }}</v-card-subtitle>
 
                             <v-card-text class="text-center">
-                                <strong>Estado:</strong> {{ comanda.estado }}<br />
+                                <strong>Estado:</strong> {{ comanda.status }}<br />
                                 <strong>Precio:</strong> {{ comanda.preu }}€<br />
                                 <strong>Quantitat:</strong> {{ comanda.quantitat }}<br />
                                 <strong>Imatge:</strong>
@@ -46,7 +43,7 @@ export default {
     },
     computed: {
         comandesFiltradas() {
-            return this.comandes.filter(comanda => comanda.estado !== 'waiting');
+            return this.comandes.filter(comanda => comanda.status !== 'waiting');
         }
     },
     mounted() {
@@ -55,7 +52,7 @@ export default {
     methods: {
         async obtenerComandes() {
             try {
-                const response = await fetch(`${this.url}?status=waiting`);
+                const response = await fetch(this.url);
                 if (!response.ok) {
                     throw new Error('Error en la respuesta de la red');
                 }
