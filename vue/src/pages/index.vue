@@ -104,7 +104,6 @@ export default {
         if (!response.ok) {
           throw new Error('Error al actualizar el estado del producto');
         }
-        // Actualiza el estado en la vista
         producto.status = 'confirmed';
         alert(`Producto ${producto.product_name} aceptado y confirmado.`);
       } catch (error) {
