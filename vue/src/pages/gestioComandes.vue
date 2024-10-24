@@ -1,12 +1,6 @@
 <template>
     <v-app>
-        <v-app-bar app color="primary" dark>
-            <v-toolbar-title>Gestió de comandes</v-toolbar-title>
-            <v-spacer></v-spacer>
-            <router-link to="/gestioProductes" style="text-decoration: none; color: white;">
-                <v-btn text @click="irAGestioProductes">Gestió Productes</v-btn>
-            </router-link>
-        </v-app-bar>
+        <Header />
 
         <v-main>
             <v-container class="mt-10">

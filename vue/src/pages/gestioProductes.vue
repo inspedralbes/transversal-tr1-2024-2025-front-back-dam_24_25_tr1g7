@@ -1,7 +1,5 @@
 <template>
-    <div>
-        <h1>Gestio de Productes</h1>
-    </div>
+    <Header />
 </template>
 
 <script>
