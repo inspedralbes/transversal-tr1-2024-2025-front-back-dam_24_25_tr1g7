@@ -111,33 +111,34 @@ export default {
         console.error('Error al aceptar producto:', error);
         alert('Error al aceptar producto.');
       }
-    }
-  },
-  async rechazarProducto(id) {
-    const producto = this.comandes.find(c => c.product_id === id);
-    if (producto) {
-      try {
-        const response = await fetch(`http://localhost:21345/canceled?order_id=${producto.order_id}`, {
-          method: 'PUT',
-        });
-        if (!response.ok) {
-          throw new Error('Error al actualizar el estado del producto');
+    },
+    async rechazarProducto(id) {
+      const producto = this.comandes.find(c => c.product_id === id);
+      if (producto) {
+        try {
+          const response = await fetch(`http://localhost:21345/canceled?order_id=${producto.order_id}`, {
+            method: 'PUT',
+          });
+          if (!response.ok) {
+            throw new Error('Error al actualizar el estado del producto');
+          }
+          producto.status = 'canceled';
+          alert(`Producto ${producto.product_name} rechazado.`);
+        } catch (error) {
+          console.error('Error al rechazar producto:', error);
+          alert('Error al rechazar producto.');
         }
-        producto.status = 'canceled';
-        alert(`Producto ${producto.product_name} rechazado.`);
-      } catch (error) {
-        console.error('Error al rechazar producto:', error);
-        alert('Error al rechazar producto.');
       }
+    },
+    dialogoProducto(producto) {
+      this.productoSeleccionado = producto;
+      this.ordenSeleccionada = this.comandes.find(comanda => comanda.product_id === producto.product_id) || null;
+      this.dialogoActivo = true;
     }
-  },
-  dialogoProducto(producto) {
-    this.productoSeleccionado = producto;
-    this.ordenSeleccionada = this.comandes.find(comanda => comanda.product_id === producto.product_id) || null;
-    this.dialogoActivo = true;
   }
 }
 </script>
+
 
 <style scoped>
 .description {
