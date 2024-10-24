@@ -20,10 +20,10 @@ var comandes = [];
 /*<-------------------------------------- Connexions ---------------------------------------->*/
 
 var pool = mysql.createPool({
-  host: "localhost",
-  user: "root",
-  password: "",
-  database: 'TR1',
+  host: 'localhost',
+  user: 'root',
+  password: '',
+  database: 'grup7bd',
   port: 3306,
   connectionLimit: 10 
 });
