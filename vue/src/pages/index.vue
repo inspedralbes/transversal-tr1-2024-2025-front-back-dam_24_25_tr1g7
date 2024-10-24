@@ -39,7 +39,8 @@
             {{ productoSeleccionado.description }}
           </v-card-text>
           <v-card-text class="text-center">
-            <p><strong>Estado:</strong> {{ productoSeleccionado.estado || 'No asignado' }}</p>
+            <p><strong>Status:</strong> {{ ordenSeleccionada ? ordenSeleccionada.status : 'No asignado' }}</p>
+            <p><strong>Total:</strong> {{ ordenSeleccionada ? ordenSeleccionada.total : 'No asignado' }}</p>
           </v-card-text>
         </v-card>
       </v-dialog>
@@ -55,16 +56,15 @@ export default {
       comandes: [],
       dialogoActivo: false,
       productoSeleccionado: {},
+      ordenSeleccionada: null,
       urlProductos: 'http://localhost:21345/getProductes',
-      urlComandes: 'http://localhost:21345/getComandes?status=waiting'
+      urlComandes: 'http://localhost:21345/getComandes?status=verified'
     };
   },
   computed: {
     productosFiltrados() {
-      const productIdsEnWaiting = this.comandes
-        .map(comanda => comanda.product_id);
-
-      return this.productos.filter(producto => productIdsEnWaiting.includes(producto.product_id));
+      const productVerified = this.comandes.map(comanda => comanda.product_id);
+      return this.productos.filter(producto => productVerified.includes(producto.product_id));
     }
   },
   mounted() {
@@ -110,6 +110,7 @@ export default {
     },
     dialogoProducto(producto) {
       this.productoSeleccionado = producto;
+      this.ordenSeleccionada = this.comandes.find(comanda => comanda.product_id === producto.product_id) || null;
       this.dialogoActivo = true;
     }
   }
