@@ -35,6 +35,9 @@
             <v-card-text>
               <v-text-field v-model="productoEditado.product_name" label="Nom del Producte"></v-text-field>
               <v-textarea v-model="productoEditado.description" label="Descripció"></v-textarea>
+              <v-text-field v-model="productoEditado.material" label="Material"></v-text-field>
+              <v-text-field v-model="productoEditado.price" label="Preu" type="number"></v-text-field>
+              <v-text-field v-model="productoEditado.stock" label="Estoc" type="number"></v-text-field>
             </v-card-text>
             <v-card-actions>
               <v-spacer></v-spacer>
@@ -83,12 +86,17 @@ export default {
         return;
       }
       try {
-        const response = await fetch(`http://localhost:21345/actualitzarProducte/${this.productoEditado.product_id}`, {
+        const params = new URLSearchParams({
+          product_id: this.productoEditado.product_id,
+          product_name: this.productoEditado.product_name,
+          description: this.productoEditado.description,
+          material: this.productoEditado.material,
+          price: this.productoEditado.price,
+          stock: this.productoEditado.stock
+        });
+
+        const response = await fetch(`http://localhost:21345/updateProducte?${params.toString()}`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(this.productoEditado)
         });
 
         if (!response.ok) {
@@ -108,7 +116,7 @@ export default {
     async eliminarProducto(id) {
       if (confirm('Estàs segur d’eliminar aquest producte?')) {
         try {
-          const response = await fetch(`http://localhost:21345/eliminarProducte/${id}`, {
+          const response = await fetch(`http://localhost:21345/deleteProducte?product_id=${id}`, {
             method: 'DELETE'
           });
           if (!response.ok) {
