@@ -1,5 +1,7 @@
 /*<-------------------------------------- Variables ---------------------------------------->*/
 
+/*<-------------------------------------- Variables ---------------------------------------->*/
+
 const { json } = require('express');
 const express = require('express');
 const cors = require('cors');
@@ -8,7 +10,10 @@ const { spawn } = require("child_process");
 
 const app = express();
 app.use(cors());
+app.use(cors());
 const port = 21345;
+
+app.use('/sources/Imatges', express.static(path.join(__dirname, 'sources/Imatges')))
 
 app.use('/sources/Imatges', express.static(path.join(__dirname, 'sources/Imatges')))
 
