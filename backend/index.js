@@ -165,6 +165,101 @@ app.get("/getProductes", (req, res) => {
   }
 });
 
+app.post("/createProducte", (req, res) => {
+  const nouProducte = {
+    product_name: req.query.product_name,
+    description: req.query.description,
+    material: req.query.material,
+    price: req.query.price,
+    stock: req.query.stock,
+  };
+
+  const image_file = `${nouProducte.product_name}.png`
+  
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error getting connection from pool:', err);
+      res.status(500).send("Error al obtenir connexió");
+      return;
+    }
+
+    const query = `INSERT INTO Products (product_name, description, material, price, stock, image_file) VALUES  (?, ?, ?, ?, ?, ?)`;
+  
+    connection.query(query, [nouProducte.product_name, nouProducte.description, nouProducte.material, nouProducte.price, nouProducte.stock, image_file], (err, results) => {
+      if (err) {
+        console.error('Error:', err);
+        res.status(500).send("Error en crear el producte");
+      } else {
+        getProductes(connection);
+        res.send("Producte afegit!");
+        console.log(`Producte: ${nouProducte.product_name} afegit correctament!`)
+      }
+      connection.release();
+    });
+  });
+});
+
+app.delete("/deleteProducte", (req, res) => {
+  const idProducteEliminar = req.query.product_id
+
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error getting connection from pool:', err);
+      res.status(500).send("Error al obtenir connexió");
+      return;
+    }
+
+    const query = `DELETE FROM Products WHERE product_id=?;`;
+  
+    connection.query(query, [idProducteEliminar], (err, results) => {
+      if (err) {
+        console.error('Error:', err);
+        res.status(500).send("Error en eliminar el producte");
+      } else {
+        getProductes(connection);
+        res.send("Producte eliminat!");
+        console.log(`Producte amb id: ${idProducteEliminar} eliminat correctament!`)
+      }
+      connection.release();
+    });
+  });
+});
+
+app.put("/updateProducte", (req, res) => {
+  const producte = {
+    product_id: req.query.product_id,
+    product_name: req.query.product_name,
+    description: req.query.description,
+    material: req.query.material,
+    price: req.query.price,
+    stock: req.query.stock,
+  };
+
+  const image_file = `${producte.product_name}.png`
+  
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error getting connection from pool:', err);
+      res.status(500).send("Error al obtenir connexió");
+      return;
+    }
+
+    const query = `UPDATE Products SET product_name = ?, description = ?, material = ?, price = ?, stock = ?, image_file = ? WHERE product_id = ?`;
+  
+    connection.query(query, [producte.product_name, producte.description, producte.material, producte.price, producte.stock, image_file, producte.product_id], (err, results) => {
+      if (err) {
+        console.error('Error:', err);
+        res.status(500).send("Error en actualitzar el producte");
+      } else {
+        getProductes(connection);
+        res.send("Producte actualitzat!");
+        console.log(`Producte: ${producte.product_name} actualitzat correctament!`)
+      }
+      connection.release();
+    }); 
+  });
+});
+
 /*<-------------------------------------- Comandes ---------------------------------------->*/
 
 app.get("/getComandes", (req, res) => {
@@ -180,6 +275,62 @@ app.get("/getComandes", (req, res) => {
   } else {
     res.json(comandes);
   }
+});
+
+app.post("/createComanda", (req, res) => {
+  const novaComanda = {
+    user_id: req.query.user_id,
+    product_id: req.query.product_id,
+    total: req.query.total
+  };
+  
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error getting connection from pool:', err);
+      res.status(500).send("Error al obtenir connexió");
+      return;
+    }
+
+    const query = `INSERT INTO Orders (user_id, product_id, total) VALUES  (?, ?, ?)`;
+  
+    connection.query(query, [novaComanda.user_id, novaComanda.product_id, novaComanda.total], (err, results) => {
+      if (err) {
+        console.error('Error:', err);
+        res.status(500).send("Error en crear la comanda");
+      } else {
+        getComandes(connection);
+        res.send("Comanda afegida!");
+        console.log(`Comanda de: ${novaComanda.user_id} afegida correctament!`)
+      }
+      connection.release();
+    });
+  });
+});
+
+app.delete("/deleteComanda", (req, res) => {
+  const idComandaEliminar = req.query.order_id
+
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error getting connection from pool:', err);
+      res.status(500).send("Error al obtenir connexió");
+      return;
+    }
+
+    const query = `DELETE FROM Orders WHERE order_id=?;`;
+  
+    connection.query(query, [idComandaEliminar], (err, results) => {
+      if (err) {
+        console.error('Error:', err);
+        res.status(500).send("Error en eliminar la comanda");
+      } else {
+        getComandes(connection);
+        res.send("Comanda eliminada!");
+        console.log(`Comanda amb id: ${idComandaEliminar} eliminada correctament!`)
+      }
+      connection.release();
+    });
+  });
 });
 
 app.put("/pending", (req, res) => {
