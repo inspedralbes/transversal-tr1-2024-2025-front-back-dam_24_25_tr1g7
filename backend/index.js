@@ -1,9 +1,10 @@
 /*<-------------------------------------- Variables ---------------------------------------->*/
 
+const { json } = require('express');
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const mysql = require('mysql2');
+const { spawn } = require("child_process");
 
 const app = express();
 app.use(cors());
@@ -11,33 +12,45 @@ const port = 21345;
 
 app.use('/sources/Imatges', express.static(path.join(__dirname, 'sources/Imatges')))
 
-app.use('/sources/Imatges', express.static(path.join(__dirname, 'sources/Imatges')));
+var mysql = require('mysql2');
 
 var usuaris = [];
 var productes = [];
 var comandes = [];
 
+
 /*<-------------------------------------- Connexions ---------------------------------------->*/
 
 var pool = mysql.createPool({
-  host: 'localhost',
-  user: 'root',
-  password: '',
-  database: 'grup7bd',
+  host: "localhost",
+  user: "root",
+  password: "",
+  database: 'TR1',
   port: 3306,
   connectionLimit: 10 
 });
+
+// var pool = mysql.createPool({
+//   host: 'localhost',
+//   user: 'a23alechasan_PR1',
+//   password: 'Skogsvardet_2024',
+//   database: 'a23alechasan_PR1',
+//   port: 3306,
+//   connectionLimit: 10 
+// });
+
 
 /*<-------------------------------------- Usuaris ---------------------------------------->*/
 
 app.get("/getUsuaris", (req, res) => {
   if (req.query.user_id) {
-    const idUsuari = Number(req.query.user_id);
-    const usuari = usuaris.find(u => u.user_id === idUsuari);
-    if (usuari) {
-      res.json(usuari);
-    } else {
-      res.send(`No hi ha cap usuari amb id: ${idUsuari}`);
+    const idUsuari = Number(req.query.id);
+    for (const usuari of usuaris) {
+      if (usuari.user_id == idUsuari) {
+        res.json(usuari);
+      } else {
+        res.send(`No hi ha cap usuari amb id: ${idUsuari}`);
+      }
     }
   } else {
     res.json(usuaris);
@@ -77,7 +90,7 @@ app.post("/createUsuari", (req, res) => {
 });
 
 app.delete("/deleteUsuari", (req, res) => {
-  const idUserEliminar = req.query.user_id;
+  const idUserEliminar = req.query.user_id
 
   pool.getConnection((err, connection) => {
     if (err) {
@@ -139,12 +152,13 @@ app.put("/updateUsuari", (req, res) => {
 
 app.get("/getProductes", (req, res) => {
   if (req.query.product_id) {
-    const idProducte = Number(req.query.product_id);
-    const producte = productes.find(p => p.product_id === idProducte);
-    if (producte) {
-      res.json(producte);
-    } else {
-      res.send(`No hi ha cap producte amb id: ${idProducte}`);
+    const idProducte = Number(req.query.id);
+    for (const producte of productes) {
+      if (producte.product_id == idProducte) {
+        res.json(producte);
+      } else {
+        res.send(`No hi ha cap producte amb id: ${idProducte}`);
+      }
     }
   } else {
     res.json(productes);
@@ -249,12 +263,52 @@ app.put("/updateProducte", (req, res) => {
 /*<-------------------------------------- Comandes ---------------------------------------->*/
 
 app.get("/getComandes", (req, res) => {
-  let query = 'SELECT * FROM Orders';
-  const status = req.query.status;
-
-  if (status) {
-    query += ` WHERE status = ?`;
+  if (req.query.order_id) {
+    const idComanda = Number(req.query.id);
+    for (const comanda of comandes) {
+      if (comanda.order_id == idComanda) {
+        res.json(comanda);
+      } else {
+        res.send(`No hi ha cap producte amb id: ${idComanda}`);
+      }
+    }
+  } else {
+    res.json(comandes);
   }
+});
+
+app.post("/createComanda", (req, res) => {
+  const novaComanda = {
+    user_id: req.query.user_id,
+    product_id: req.query.product_id,
+    total: req.query.total
+  };
+  
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error getting connection from pool:', err);
+      res.status(500).send("Error al obtenir connexió");
+      return;
+    }
+
+    const query = `INSERT INTO Orders (user_id, product_id, total) VALUES  (?, ?, ?)`;
+  
+    connection.query(query, [novaComanda.user_id, novaComanda.product_id, novaComanda.total], (err, results) => {
+      if (err) {
+        console.error('Error:', err);
+        res.status(500).send("Error en crear la comanda");
+      } else {
+        getComandes(connection);
+        res.send("Comanda afegida!");
+        console.log(`Comanda de: ${novaComanda.user_id} afegida correctament!`)
+      }
+      connection.release();
+    });
+  });
+});
+
+app.delete("/deleteComanda", (req, res) => {
+  const idComandaEliminar = req.query.order_id
 
   pool.getConnection((err, connection) => {
     if (err) {
@@ -263,20 +317,76 @@ app.get("/getComandes", (req, res) => {
       return;
     }
 
-    connection.query(query, [status], (err, results) => {
+    const query = `DELETE FROM Orders WHERE order_id=?;`;
+  
+    connection.query(query, [idComandaEliminar], (err, results) => {
       if (err) {
         console.error('Error:', err);
-        res.status(500).send('Error en la consulta a la base de datos');
+        res.status(500).send("Error en eliminar la comanda");
       } else {
-        res.json(results);
+        getComandes(connection);
+        res.send("Comanda eliminada!");
+        console.log(`Comanda amb id: ${idComandaEliminar} eliminada correctament!`)
       }
       connection.release();
     });
   });
 });
 
+app.put("/pending", (req, res) => {
+  const order_id = req.query.order_id
+  
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error getting connection from pool:', err);
+      res.status(500).send("Error al obtenir connexió");
+      return;
+    }
+
+    const query = `UPDATE Orders SET status = 'pending' WHERE order_id = ?`;
+  
+    connection.query(query, [order_id], (err, results) => {
+      if (err) {
+        console.error('Error:', err);
+        res.status(500).send("Error en actualitzar l'ordre");
+      } else {
+        getComandes(connection);
+        res.send("Ordre actualitzada a 'pending'!");
+        console.log(`L'ordre: ${order_id} està 'pending'!`)
+      }
+      connection.release();
+    }); 
+  });
+});
+
+app.put("/shipped", (req, res) => {
+  const order_id = req.query.order_id
+  
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error getting connection from pool:', err);
+      res.status(500).send("Error al obtenir connexió");
+      return;
+    }
+
+    const query = `UPDATE Orders SET status = 'shipped' WHERE order_id = ?`;
+  
+    connection.query(query, [order_id], (err, results) => {
+      if (err) {
+        console.error('Error:', err);
+        res.status(500).send("Error en actualitzar l'ordre");
+      } else {
+        getComandes(connection);
+        res.send("Ordre actualitzada a 'shipped'!");
+        console.log(`L'ordre: ${order_id} ha estat enviada`)
+      }
+      connection.release();
+    }); 
+  });
+});
+
 app.put("/verified", (req, res) => {
-  const order_id = req.query.order_id;
+  const order_id = req.query.order_id
   
   pool.getConnection((err, connection) => {
     if (err) {
@@ -294,7 +404,7 @@ app.put("/verified", (req, res) => {
       } else {
         getComandes(connection);
         res.send("Ordre actualitzada a 'verified'!");
-        console.log(`L'ordre: ${order_id} ha estat verificada`);
+        console.log(`L'ordre: ${order_id} ha estat verificada`)
       }
       connection.release();
     }); 
@@ -302,7 +412,7 @@ app.put("/verified", (req, res) => {
 });
 
 app.put("/confirmed", (req, res) => {
-  const order_id = req.query.order_id;
+  const order_id = req.query.order_id
   
   pool.getConnection((err, connection) => {
     if (err) {
@@ -320,7 +430,7 @@ app.put("/confirmed", (req, res) => {
       } else {
         getComandes(connection);
         res.send("Ordre actualitzada a 'confirmed'!");
-        console.log(`L'ordre: ${order_id} ha estat confirmada`);
+        console.log(`L'ordre: ${order_id} ha estat confirmada`)
       }
       connection.release();
     }); 
@@ -328,7 +438,7 @@ app.put("/confirmed", (req, res) => {
 });
 
 app.put("/canceled", (req, res) => {
-  const order_id = req.query.order_id;
+  const order_id = req.query.order_id
   
   pool.getConnection((err, connection) => {
     if (err) {
@@ -344,22 +454,21 @@ app.put("/canceled", (req, res) => {
         console.error('Error:', err);
         res.status(500).send("Error en actualitzar l'ordre");
       } else {
-        esborrarComanda(connection, order_id);
+        esborrarComanda(connection, order_id)
         getComandes(connection);
         res.send("Ordre actualitzada a 'canceled'!");
-        console.log(`L'ordre: ${order_id} ha estat cancelada`);
+        console.log(`L'ordre: ${order_id} ha estat cancelada`)
       }
       connection.release();
     }); 
   });
 });
 
-
 /*<-------------------------------------- Inici App ---------------------------------------->*/
 
 app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`);
-});
+  console.log(`Example app listening on port ${port}`)
+})
 
 pool.getConnection((err, connection) => {
   if (err) {
@@ -406,9 +515,8 @@ function getComandes(connection) {
   });
 }
 
-function esborrarComanda(connection, order_id) {
+function esborrarComanda(connection ,order_id) {
   const query = `DELETE FROM Orders WHERE order_id=?;`;
-  
   connection.query(query, [order_id], (err, results) => {
     if (err) {
       console.error('Error:', err);

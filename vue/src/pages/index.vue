@@ -64,7 +64,11 @@ export default {
   },
   computed: {
     productosFiltrados() {
-      const productVerified = this.comandes.map(comanda => comanda.product_id);
+      // Obtener solo los IDs de productos de las comandas verificadas
+      const productVerified = this.comandes
+        .filter(comanda => comanda.status === 'verified')
+        .map(comanda => comanda.product_id);
+      // Filtrar productos según los IDs obtenidos
       return this.productos.filter(producto => productVerified.includes(producto.product_id));
     }
   },
@@ -91,6 +95,7 @@ export default {
           throw new Error('Error en la respuesta de la red');
         }
         this.comandes = await response.json();
+        console.log('Comandes obtenidas:', this.comandes);
       } catch (error) {
         console.error('Error al obtener comandes:', error);
       }
