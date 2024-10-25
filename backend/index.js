@@ -24,23 +24,23 @@ var comandes = [];
 
 /*<-------------------------------------- Connexions ---------------------------------------->*/
 
- /* var pool = mysql.createPool({
+var pool = mysql.createPool({
   host: "localhost",
   user: "root",
   password: "",
-  database: 'a23alechasan_PR1',
+  database: 'TR1',
   port: 3306,
-  connectionLimit: 10 
-});*/
-
-var pool = mysql.createPool({
-  host: 'localhost',
-  user: 'a23alechasan_PR1',
-  password: 'Skogsvardet_2024',
-  database: 'a23alechasan_PR1',
-  port: 3306,
-  connectionLimit: 10 
+  connectionLimit: 10
 });
+
+// var pool = mysql.createPool({
+//   host: 'localhost',
+//   user: 'a23alechasan_PR1',
+//   password: 'Skogsvardet_2024',
+//   database: 'a23alechasan_PR1',
+//   port: 3306,
+//   connectionLimit: 10 
+// });
 
 
 /*<-------------------------------------- Usuaris ---------------------------------------->*/
@@ -68,7 +68,7 @@ app.post("/createUsuari", (req, res) => {
     last_name: req.query.last_name,
     email: req.query.email
   };
-  
+
   pool.getConnection((err, connection) => {
     if (err) {
       console.error('Error getting connection from pool:', err);
@@ -77,7 +77,7 @@ app.post("/createUsuari", (req, res) => {
     }
 
     const query = `INSERT INTO Users (username, password, first_name, last_name, email) VALUES (?, ?, ?, ?, ?)`;
-  
+
     connection.query(query, [nouUser.username, nouUser.password, nouUser.first_name, nouUser.last_name, nouUser.email], (err, results) => {
       if (err) {
         console.error('Error:', err);
@@ -103,7 +103,7 @@ app.delete("/deleteUsuari", (req, res) => {
     }
 
     const query = `DELETE FROM Users WHERE user_id=?;`;
-  
+
     connection.query(query, [idUserEliminar], (err, results) => {
       if (err) {
         console.error('Error:', err);
@@ -127,7 +127,7 @@ app.put("/updateUsuari", (req, res) => {
     last_name: req.query.last_name,
     email: req.query.email
   };
-  
+
   pool.getConnection((err, connection) => {
     if (err) {
       console.error('Error getting connection from pool:', err);
@@ -136,7 +136,7 @@ app.put("/updateUsuari", (req, res) => {
     }
 
     const query = `UPDATE Users SET username = ?, password = ?, first_name = ?, last_name = ?, email = ?  WHERE user_id = ?`;
-  
+
     connection.query(query, [user.username, user.password, user.first_name, user.last_name, user.email, user.user_id], (err, results) => {
       if (err) {
         console.error('Error:', err);
@@ -147,7 +147,7 @@ app.put("/updateUsuari", (req, res) => {
         console.log(`Usuari: ${user.username} actualitzat correctament!`)
       }
       connection.release();
-    }); 
+    });
   });
 });
 
@@ -178,7 +178,7 @@ app.post("/createProducte", (req, res) => {
   };
 
   const image_file = `${nouProducte.product_name}.png`
-  
+
   pool.getConnection((err, connection) => {
     if (err) {
       console.error('Error getting connection from pool:', err);
@@ -187,7 +187,7 @@ app.post("/createProducte", (req, res) => {
     }
 
     const query = `INSERT INTO Products (product_name, description, material, price, stock, image_file) VALUES  (?, ?, ?, ?, ?, ?)`;
-  
+
     connection.query(query, [nouProducte.product_name, nouProducte.description, nouProducte.material, nouProducte.price, nouProducte.stock, image_file], (err, results) => {
       if (err) {
         console.error('Error:', err);
@@ -213,7 +213,7 @@ app.delete("/deleteProducte", (req, res) => {
     }
 
     const query = `DELETE FROM Products WHERE product_id=?;`;
-  
+
     connection.query(query, [idProducteEliminar], (err, results) => {
       if (err) {
         console.error('Error:', err);
@@ -239,7 +239,7 @@ app.put("/updateProducte", (req, res) => {
   };
 
   const image_file = `${producte.product_name}.png`
-  
+
   pool.getConnection((err, connection) => {
     if (err) {
       console.error('Error getting connection from pool:', err);
@@ -248,7 +248,7 @@ app.put("/updateProducte", (req, res) => {
     }
 
     const query = `UPDATE Products SET product_name = ?, description = ?, material = ?, price = ?, stock = ?, image_file = ? WHERE product_id = ?`;
-  
+
     connection.query(query, [producte.product_name, producte.description, producte.material, producte.price, producte.stock, image_file, producte.product_id], (err, results) => {
       if (err) {
         console.error('Error:', err);
@@ -259,7 +259,7 @@ app.put("/updateProducte", (req, res) => {
         console.log(`Producte: ${producte.product_name} actualitzat correctament!`)
       }
       connection.release();
-    }); 
+    });
   });
 });
 
@@ -286,7 +286,7 @@ app.post("/createComanda", (req, res) => {
     product_id: req.query.product_id,
     total: req.query.total
   };
-  
+
   pool.getConnection((err, connection) => {
     if (err) {
       console.error('Error getting connection from pool:', err);
@@ -295,7 +295,7 @@ app.post("/createComanda", (req, res) => {
     }
 
     const query = `INSERT INTO Orders (user_id, product_id, total) VALUES  (?, ?, ?)`;
-  
+
     connection.query(query, [novaComanda.user_id, novaComanda.product_id, novaComanda.total], (err, results) => {
       if (err) {
         console.error('Error:', err);
@@ -321,7 +321,7 @@ app.delete("/deleteComanda", (req, res) => {
     }
 
     const query = `DELETE FROM Orders WHERE order_id=?;`;
-  
+
     connection.query(query, [idComandaEliminar], (err, results) => {
       if (err) {
         console.error('Error:', err);
@@ -338,7 +338,7 @@ app.delete("/deleteComanda", (req, res) => {
 
 app.put("/pending", (req, res) => {
   const order_id = req.query.order_id
-  
+
   pool.getConnection((err, connection) => {
     if (err) {
       console.error('Error getting connection from pool:', err);
@@ -347,7 +347,7 @@ app.put("/pending", (req, res) => {
     }
 
     const query = `UPDATE Orders SET status = 'pending' WHERE order_id = ?`;
-  
+
     connection.query(query, [order_id], (err, results) => {
       if (err) {
         console.error('Error:', err);
@@ -358,13 +358,13 @@ app.put("/pending", (req, res) => {
         console.log(`L'ordre: ${order_id} està 'pending'!`)
       }
       connection.release();
-    }); 
+    });
   });
 });
 
 app.put("/shipped", (req, res) => {
   const order_id = req.query.order_id
-  
+
   pool.getConnection((err, connection) => {
     if (err) {
       console.error('Error getting connection from pool:', err);
@@ -373,7 +373,7 @@ app.put("/shipped", (req, res) => {
     }
 
     const query = `UPDATE Orders SET status = 'shipped' WHERE order_id = ?`;
-  
+
     connection.query(query, [order_id], (err, results) => {
       if (err) {
         console.error('Error:', err);
@@ -384,13 +384,13 @@ app.put("/shipped", (req, res) => {
         console.log(`L'ordre: ${order_id} ha estat enviada`)
       }
       connection.release();
-    }); 
+    });
   });
 });
 
 app.put("/verified", (req, res) => {
   const order_id = req.query.order_id
-  
+
   pool.getConnection((err, connection) => {
     if (err) {
       console.error('Error getting connection from pool:', err);
@@ -399,7 +399,7 @@ app.put("/verified", (req, res) => {
     }
 
     const query = `UPDATE Orders SET status = 'verified' WHERE order_id = ?`;
-  
+
     connection.query(query, [order_id], (err, results) => {
       if (err) {
         console.error('Error:', err);
@@ -410,13 +410,13 @@ app.put("/verified", (req, res) => {
         console.log(`L'ordre: ${order_id} ha estat verificada`)
       }
       connection.release();
-    }); 
+    });
   });
 });
 
 app.put("/confirmed", (req, res) => {
   const order_id = req.query.order_id
-  
+
   pool.getConnection((err, connection) => {
     if (err) {
       console.error('Error getting connection from pool:', err);
@@ -425,7 +425,7 @@ app.put("/confirmed", (req, res) => {
     }
 
     const query = `UPDATE Orders SET status = 'confirmed' WHERE order_id = ?`;
-  
+
     connection.query(query, [order_id], (err, results) => {
       if (err) {
         console.error('Error:', err);
@@ -436,13 +436,13 @@ app.put("/confirmed", (req, res) => {
         console.log(`L'ordre: ${order_id} ha estat confirmada`)
       }
       connection.release();
-    }); 
+    });
   });
 });
 
 app.put("/canceled", (req, res) => {
   const order_id = req.query.order_id
-  
+
   pool.getConnection((err, connection) => {
     if (err) {
       console.error('Error getting connection from pool:', err);
@@ -451,7 +451,7 @@ app.put("/canceled", (req, res) => {
     }
 
     const query = `UPDATE Orders SET status = 'canceled' WHERE order_id = ?`;
-  
+
     connection.query(query, [order_id], (err, results) => {
       if (err) {
         console.error('Error:', err);
@@ -463,7 +463,7 @@ app.put("/canceled", (req, res) => {
         console.log(`L'ordre: ${order_id} ha estat cancelada`)
       }
       connection.release();
-    }); 
+    });
   });
 });
 
@@ -478,7 +478,7 @@ pool.getConnection((err, connection) => {
     console.error('Error getting connection from pool:', err);
     return;
   }
-  
+
   console.log("Connected to the pool!");
 
   getUsers(connection);
@@ -518,7 +518,7 @@ function getComandes(connection) {
   });
 }
 
-function esborrarComanda(connection ,order_id) {
+function esborrarComanda(connection, order_id) {
   const query = `DELETE FROM Orders WHERE order_id=?;`;
   connection.query(query, [order_id], (err, results) => {
     if (err) {
