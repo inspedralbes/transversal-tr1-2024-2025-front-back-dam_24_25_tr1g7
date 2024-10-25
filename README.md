@@ -16,3 +16,6 @@ Adreça web de la documentació phpdoc (labs.inspedralbes.cat):
 
 Adreça web del projecte desplegat (labs.inspedralbes.cat / cantinaX.alumnes.inspedralbes.cat):
     X
+
+Diagrama de casos del projecte:
+https://design.penpot.app/#/view/5e250d03-b345-8112-8005-26b89ba13c1e?page-id=43a47cf1-669c-80f7-8004-18ac2dc5a21a&section=interactions&frame-id=43a47cf1-669c-80f7-8004-18ac38981632&index=0&share-id=9cff1166-2265-80f2-8005-2bf3217b3a90
