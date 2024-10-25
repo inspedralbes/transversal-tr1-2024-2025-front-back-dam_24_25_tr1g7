@@ -20,8 +20,8 @@
                                     </v-card-subtitle>
                                 </v-card-text>
                             </div>
-                            <v-img :src="`http://dam.inspedralbes.cat:21345/sources/Imatges/${producto.image_file}`" height="350px" width="50%"
-                                class="my-4 mx-auto" />
+                            <v-img :src="`http://dam.inspedralbes.cat:21345/sources/Imatges/${getImageFile(comanda.product_id)}`"
+                                height="350px" width="50%" class="my-4 mx-auto" />
                         </v-card>
                     </v-col>
                 </v-row>
@@ -32,8 +32,8 @@
                     <v-btn icon @click="dialogoActivo = false" class="ml-auto mt-2 mr-2">
                         <v-icon color="grey">mdi-close</v-icon>
                     </v-btn>
-                    <v-img :src="`http://dam.inspedralbes.cat:21345/sources/Imatges/${producto.image_file}`" height="350px" width="50%"
-                        class="my-2 mx-auto" />
+                    <v-img :src="`http://dam.inspedralbes.cat:21345/sources/Imatges/${getImageFile(comanda.product_id)}`"
+                        height="350px" width="50%" class="my-2 mx-auto" />
                     <v-card-text class="text-center">
                         {{ comandaSeleccionada.description }}
                     </v-card-text>
@@ -104,6 +104,10 @@ export default {
         getName(productId) {
             const producto = this.productos.find(p => p.product_id === productId);
             return producto ? producto.product_name : 'Nom no disponible';
+        },
+        getImageFile(productId) {
+            const producto = this.productos.find(p => p.product_id === productId);
+            return producto ? producto.image_file : 'imagen_no_disponible.jpg';
         },
         dialogoComanda(comanda) {
             this.comandaSeleccionada = comanda;
