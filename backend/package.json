@@ -17,6 +17,7 @@
   "homepage": "https://github.com/inspedralbes/transversal-tr1-2024-2025-front-back-dam_24_25_tr1g7#readme",
   "dependencies": {
     "cors": "^2.8.5",
+    "debug": "^4.3.7",
     "express": "^4.21.1",
     "mysql": "^2.18.1",
     "mysql2": "^3.11.3",

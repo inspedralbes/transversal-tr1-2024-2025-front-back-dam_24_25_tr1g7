@@ -1,15 +1,15 @@
 /*<-------------------------------------- Variables ---------------------------------------->*/
 
-/*<-------------------------------------- Variables ---------------------------------------->*/
-
 const { json } = require('express');
 const express = require('express');
+const fs = require('fs');
 const cors = require('cors');
 const path = require('path');
 const { spawn } = require("child_process");
 
+const appJSON = express
 const app = express();
-app.use(cors());
+app.use(express.json({ limit: '200mb' }));
 app.use(cors());
 const port = 21345;
 
@@ -24,14 +24,14 @@ var comandes = [];
 
 /*<-------------------------------------- Connexions ---------------------------------------->*/
 
- /* var pool = mysql.createPool({
+/* var pool = mysql.createPool({
   host: "localhost",
   user: "root",
   password: "",
   database: 'a23alechasan_PR1',
   port: 3306,
   connectionLimit: 10 
-});*/
+}); */
 
 var pool = mysql.createPool({
   host: 'localhost',
@@ -47,7 +47,7 @@ var pool = mysql.createPool({
 
 app.get("/getUsuaris", (req, res) => {
   if (req.query.user_id) {
-    const idUsuari = Number(req.query.id);
+    const idUsuari = Number(req.query.user_id);
     for (const usuari of usuaris) {
       if (usuari.user_id == idUsuari) {
         res.json(usuari);
@@ -155,7 +155,7 @@ app.put("/updateUsuari", (req, res) => {
 
 app.get("/getProductes", (req, res) => {
   if (req.query.product_id) {
-    const idProducte = Number(req.query.id);
+    const idProducte = Number(req.query.product_id);
     for (const producte of productes) {
       if (producte.product_id == idProducte) {
         res.json(producte);
@@ -170,15 +170,17 @@ app.get("/getProductes", (req, res) => {
 
 app.post("/createProducte", (req, res) => {
   const nouProducte = {
-    product_name: req.query.product_name,
-    description: req.query.description,
-    material: req.query.material,
-    price: req.query.price,
-    stock: req.query.stock,
+    product_name: req.body.product_name,
+    description: req.body.description,
+    material: req.body.material,
+    price: req.body.price,
+    stock: req.body.stock,
+    string_imatge: req.body.string_imatge
   };
 
-  const image_file = `${nouProducte.product_name}.png`
-  
+  const image_file = `${nouProducte.product_name}.png`;
+  const filePath = `${process.cwd()}/sources/Imatges/${image_file}`;
+
   pool.getConnection((err, connection) => {
     if (err) {
       console.error('Error getting connection from pool:', err);
@@ -186,21 +188,31 @@ app.post("/createProducte", (req, res) => {
       return;
     }
 
-    const query = `INSERT INTO Products (product_name, description, material, price, stock, image_file) VALUES  (?, ?, ?, ?, ?, ?)`;
+
+    const query = `INSERT INTO Products (product_name, description, material, price, stock, image_file) VALUES (?, ?, ?, ?, ?, ?)`;
   
     connection.query(query, [nouProducte.product_name, nouProducte.description, nouProducte.material, nouProducte.price, nouProducte.stock, image_file], (err, results) => {
       if (err) {
         console.error('Error:', err);
         res.status(500).send("Error en crear el producte");
       } else {
-        getProductes(connection);
-        res.send("Producte afegit!");
-        console.log(`Producte: ${nouProducte.product_name} afegit correctament!`)
+        const base64Image = nouProducte.string_imatge.split(';base64,').pop();
+        fs.writeFile(filePath, base64Image, { encoding: 'base64' }, function(err) {
+          if (err) {
+            console.error('Error al crear la imatge:', err);
+            return res.status(500).send("Error en crear la imatge");
+          }
+          console.log('Imatge creada');
+          getProductes(connection);
+          res.send("Producte afegit!");
+          console.log(`Producte: ${nouProducte.product_name} afegit correctament!`);
+        });
       }
       connection.release();
     });
   });
 });
+
 
 app.delete("/deleteProducte", (req, res) => {
   const idProducteEliminar = req.query.product_id
@@ -267,7 +279,7 @@ app.put("/updateProducte", (req, res) => {
 
 app.get("/getComandes", (req, res) => {
   if (req.query.order_id) {
-    const idComanda = Number(req.query.id);
+    const idComanda = Number(req.query.order_id);
     for (const comanda of comandes) {
       if (comanda.order_id == idComanda) {
         res.json(comanda);
