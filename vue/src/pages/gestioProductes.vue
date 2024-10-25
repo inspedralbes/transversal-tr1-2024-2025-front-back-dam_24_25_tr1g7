@@ -1,12 +1,6 @@
 <template>
   <v-app>
-    <v-app-bar app color="primary" dark>
-      <v-toolbar-title>Gestió de Productes</v-toolbar-title>
-      <v-spacer></v-spacer>
-      <router-link to="/gestioComandes" style="text-decoration: none; color: white;">
-        <v-btn text>Gestió Comandes</v-btn>
-      </router-link>
-    </v-app-bar>
+    <Header />
 
     <v-main>
       <v-container class="mt-10">
@@ -52,6 +46,8 @@
 </template>
 
 <script>
+import Header from '@/components/Header.vue';
+
 export default {
   data() {
     return {
