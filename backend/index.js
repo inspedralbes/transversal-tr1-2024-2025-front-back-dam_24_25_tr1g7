@@ -24,30 +24,30 @@ var comandes = [];
 
 /*<-------------------------------------- Connexions ---------------------------------------->*/
 
-var pool = mysql.createPool({
+/* var pool = mysql.createPool({
   host: "localhost",
   user: "root",
   password: "",
   database: 'a23alechasan_PR1',
   port: 3306,
   connectionLimit: 10 
-});
+}); */
 
-/* var pool = mysql.createPool({
+var pool = mysql.createPool({
   host: 'localhost',
   user: 'a23alechasan_PR1',
   password: 'Skogsvardet_2024',
   database: 'a23alechasan_PR1',
   port: 3306,
   connectionLimit: 10 
-}); */
+});
 
 
 /*<-------------------------------------- Usuaris ---------------------------------------->*/
 
 app.get("/getUsuaris", (req, res) => {
   if (req.query.user_id) {
-    const idUsuari = Number(req.query.id);
+    const idUsuari = Number(req.query.user_id);
     for (const usuari of usuaris) {
       if (usuari.user_id == idUsuari) {
         res.json(usuari);
@@ -155,7 +155,7 @@ app.put("/updateUsuari", (req, res) => {
 
 app.get("/getProductes", (req, res) => {
   if (req.query.product_id) {
-    const idProducte = Number(req.query.id);
+    const idProducte = Number(req.query.product_id);
     for (const producte of productes) {
       if (producte.product_id == idProducte) {
         res.json(producte);
@@ -279,7 +279,7 @@ app.put("/updateProducte", (req, res) => {
 
 app.get("/getComandes", (req, res) => {
   if (req.query.order_id) {
-    const idComanda = Number(req.query.id);
+    const idComanda = Number(req.query.order_id);
     for (const comanda of comandes) {
       if (comanda.order_id == idComanda) {
         res.json(comanda);
