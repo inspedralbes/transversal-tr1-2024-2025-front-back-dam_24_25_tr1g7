@@ -152,7 +152,6 @@ app.put("/updateUsuari", (req, res) => {
 });
 
 /*<-------------------------------------- Productes ---------------------------------------->*/
-//e
 app.get("/getProductes", (req, res) => {
   if (req.query.product_id) {
     const idProducte = Number(req.query.product_id);
