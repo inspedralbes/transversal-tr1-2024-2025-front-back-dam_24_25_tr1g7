@@ -231,7 +231,7 @@ app.post("/createProducte", (req, res) => {
 
 app.delete("/deleteProducte", (req, res) => {
   const idProducteEliminar = req.query.product_id
-
+  //Hola
   pool.getConnection((err, connection) => {
     if (err) {
       console.error('Error getting connection from pool:', err);
