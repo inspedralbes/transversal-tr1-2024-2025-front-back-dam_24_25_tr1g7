@@ -20,8 +20,8 @@
                                     </v-card-subtitle>
                                 </v-card-text>
                             </div>
-                            <v-img :src="`http://dam.inspedralbes.cat:21345/sources/Imatges/${getImageFile(comanda.product_id)}`"
-                                height="350px" width="50%" class="my-4 mx-auto" />
+                            <v-img :src="getImageSrc(comanda.product_id)" height="350px" width="50%"
+                                class="my-4 mx-auto" />
                         </v-card>
                     </v-col>
                 </v-row>
@@ -32,19 +32,26 @@
                     <v-btn icon @click="dialogoActivo = false" class="ml-auto mt-2 mr-2">
                         <v-icon color="grey">mdi-close</v-icon>
                     </v-btn>
-                    <v-img :src="`http://dam.inspedralbes.cat:21345/sources/Imatges/${getImageFile(comanda.product_id)}`"
-                        height="350px" width="50%" class="my-2 mx-auto" />
+                    <v-img :src="getImageSrc(comandaSeleccionada.product_id)" height="350px" width="50%"
+                        class="my-2 mx-auto" />
                     <v-card-text class="text-center">
                         {{ comandaSeleccionada.description }}
                     </v-card-text>
                     <v-card-text class="text-center">
-                        <strong>Estado:</strong> {{ comandaSeleccionada.status }}<br />
+                        <strong>Estado:</strong>
+                        <v-select v-model="nuevoEstado" :items="estados" label="Cambiar estado" />
+                        <br />
                         <strong>Precio:</strong> {{ comandaSeleccionada.total }}€<br />
                     </v-card-text>
                     <v-card-text class="text-center">
                         <strong>{{ productoSeleccionado.product_name }}</strong><br />
                         <strong>Descripción:</strong> {{ productoSeleccionado.description }}<br />
                     </v-card-text>
+                    <v-card-actions class="justify-center">
+                        <v-btn color="primary" @click="cambiarEstado(comandaSeleccionada.order_id, nuevoEstado)">
+                            Cambiar Estado
+                        </v-btn>
+                    </v-card-actions>
                 </v-card>
             </v-dialog>
         </v-main>
@@ -61,8 +68,12 @@ export default {
             dialogoActivo: false,
             comandaSeleccionada: {},
             productoSeleccionado: {},
+            nuevoEstado: '',
+            estados: ['waiting', 'pending', 'shipped', 'verified', 'confirmed', 'canceled'],
             urlComandes: 'http://dam.inspedralbes.cat:21345/getComandes',
-            urlProductos: 'http://dam.inspedralbes.cat:21345/getProductes'
+            urlProductos: 'http://dam.inspedralbes.cat:21345/getProductes',
+            urlActualizarEstado: 'http://dam.inspedralbes.cat:21345/updateComanda',
+            mensaje: '' // Mensaje para el feedback al usuario
         };
     },
     computed: {
@@ -84,6 +95,7 @@ export default {
                 this.comandes = await response.json();
             } catch (error) {
                 console.error('Error al obtener comandas:', error);
+                this.mensaje = 'Error al obtener comandas.';
             }
         },
         async obtenerProductos() {
@@ -95,6 +107,29 @@ export default {
                 this.productos = await response.json();
             } catch (error) {
                 console.error('Error al obtener productos:', error);
+                this.mensaje = 'Error al obtener productos.';
+            }
+        },
+        async cambiarEstado(orderId, nuevoEstado) {
+            try {
+                const response = await fetch(`http://dam.inspedralbes.cat:21345/${nuevoEstado}?order_id=${orderId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        order_id: orderId,
+                    }),
+                });
+                if (!response.ok) {
+                    throw new Error('Error al actualizar el estado');
+                }
+                await this.obtenerComandes(); // Obtener la lista actualizada de comandas
+                this.mensaje = 'Estado actualizado con éxito.'; // Mensaje de éxito
+                this.dialogoActivo = false; // Cerrar el diálogo
+            } catch (error) {
+                console.error('Error al cambiar el estado de la comanda:', error);
+                this.mensaje = 'Error al cambiar el estado.';
             }
         },
         getDescription(productId) {
@@ -105,13 +140,16 @@ export default {
             const producto = this.productos.find(p => p.product_id === productId);
             return producto ? producto.product_name : 'Nom no disponible';
         },
-        getImageFile(productId) {
+        getImageSrc(productId) {
             const producto = this.productos.find(p => p.product_id === productId);
-            return producto ? producto.image_file : 'imagen_no_disponible.jpg';
+            return producto
+                ? `http://dam.inspedralbes.cat:21345/sources/Imatges/${producto.image_file}`
+                : 'http://dam.inspedralbes.cat:21345/sources/Imatges/imagen_no_disponible.jpg';
         },
         dialogoComanda(comanda) {
             this.comandaSeleccionada = comanda;
             this.productoSeleccionado = this.productos.find(producto => producto.product_id === comanda.product_id) || {};
+            this.nuevoEstado = comanda.status;
             this.dialogoActivo = true;
         }
     }

@@ -64,11 +64,9 @@ export default {
   },
   computed: {
     productosFiltrados() {
-      // Obtener solo los IDs de productos de las comandas verificadas
       const productVerified = this.comandes
         .filter(comanda => comanda.status === 'verified')
         .map(comanda => comanda.product_id);
-      // Filtrar productos según los IDs obtenidos
       return this.productos.filter(producto => productVerified.includes(producto.product_id));
     }
   },
