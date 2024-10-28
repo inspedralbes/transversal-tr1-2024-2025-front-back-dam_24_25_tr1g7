@@ -24,23 +24,23 @@ var comandes = [];
 
 /*<-------------------------------------- Connexions ---------------------------------------->*/
 
-/* var pool = mysql.createPool({
+var pool = mysql.createPool({
   host: "localhost",
   user: "root",
   password: "",
   database: 'a23alechasan_PR1',
   port: 3306,
   connectionLimit: 10 
-}); */
+});
 
-var pool = mysql.createPool({
+/* var pool = mysql.createPool({
   host: 'localhost',
   user: 'a23alechasan_PR1',
   password: 'Skogsvardet_2024',
   database: 'a23alechasan_PR1',
   port: 3306,
   connectionLimit: 10 
-});
+}); */
 
 
 /*<-------------------------------------- Usuaris ---------------------------------------->*/
@@ -196,17 +196,32 @@ app.post("/createProducte", (req, res) => {
         console.error('Error:', err);
         res.status(500).send("Error en crear el producte");
       } else {
-        const base64Image = nouProducte.string_imatge.split(';base64,').pop();
-        fs.writeFile(filePath, base64Image, { encoding: 'base64' }, function(err) {
+        if (nouProducte.string_imatge != undefined && nouProducte.string_imatge != ""){
+          const base64Image = nouProducte.string_imatge.split(';base64,').pop();
+          fs.writeFile(filePath, base64Image, { encoding: 'base64' }, function(err) {
           if (err) {
-            console.error('Error al crear la imatge:', err);
-            return res.status(500).send("Error en crear la imatge");
+            console.error('Error en afegir la imatge:', err);
+            return res.status(500).send("Error en afegir la imatge");
           }
-          console.log('Imatge creada');
+          console.log('Imatge afegida');
           getProductes(connection);
           res.send("Producte afegit!");
           console.log(`Producte: ${nouProducte.product_name} afegit correctament!`);
         });
+        } else {
+          const imatgeError = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAAAAACIM/FCAAAChElEQVR4Ae3aMW/TQBxAcb70k91AAiGuGlZAtOlQApWaDiSdklZq2RPUTm1xUWL3PgqSpygkXlh88N54nn7S2Trd3y/CP5IQIUKECBEiRIgQIUKECBEiRIgQIUKECBEiRIgQIUKECBEiRIgQIUKECBEiRIgQIUKECBEiRIgQIUKECPmPIEKECBEiRIgQIeX82+FBO0naB4eTRRkt5P7sNWt1Rw9RQvKThI2SYR4f5OoVW2rfRAYpT6hqHc8WeVHki9mgRdWwiAmyfA9AdrlaW5tlAHxcxQMpK8feRbGxPEkrSREN5ARg/y780V0GMIwFcgXwLg9byvsAN3FA8lfAfr7jYQZ0nqKAfAb21vYVwNruSoEvMUDuE+Ai7IKECZA+RAA5A7JiN6TMgFHzIeUb4DLshoQZ0H1uPGQOvFzVQZYtYNF4yBg4DnWQMAAmjYccArN6yBQ4ajzkAFjUQ+ZAv/GQNpDXQ3Kg03hIAhT1kAJIhLi1/vJl39Ic6Mf3+a2K8PM7BgahtgEwjuKI0lqGjSI8opRdYFb3sk/jODSGEZCVuyFFDzgPzYc8JMBkN2QMpI8RQMIQ2LvdBblNgdM4Lh/aQJaHrf3sAe2nKCDhGqCfb3VEcx1UNQTItlzQ3fYAvoZYIMUHgHRSbiyPU4BPZUSX2JWEbLZcW5v2qByrmMYKxZCq1mA6z4sin08HLapOy8gGPddtttT5HuHobZiwUXr6K85h6KjLWm/PH+MdTy/GR/12knb6g8mPZ38YECJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAh0fUb5q7oCGreEVEAAAAASUVORK5CYII="
+          const base64Image = imatgeError.split(';base64,').pop();
+          fs.writeFile(filePath, base64Image, { encoding: 'base64' }, function(err) {
+          if (err) {
+            console.error('Error en afegir la imatge:', err);
+            return res.status(500).send("Error en afegir la imatge");
+          }
+          console.log('Imatge afegida');
+          getProductes(connection);
+          res.send("Producte afegit!");
+          console.log(`Producte: ${nouProducte.product_name} afegit correctament!`);
+        });
+        }
       }
       connection.release();
     });
@@ -242,15 +257,17 @@ app.delete("/deleteProducte", (req, res) => {
 
 app.put("/updateProducte", (req, res) => {
   const producte = {
-    product_id: req.query.product_id,
-    product_name: req.query.product_name,
-    description: req.query.description,
-    material: req.query.material,
-    price: req.query.price,
-    stock: req.query.stock,
+    product_id: req.body.product_id,
+    product_name: req.body.product_name,
+    description: req.body.description,
+    material: req.body.material,
+    price: req.body.price,
+    stock: req.body.stock,
+    string_imatge: req.body.string_imatge
   };
 
   const image_file = `${producte.product_name}.png`
+  const filePath = `${process.cwd()}/sources/Imatges/${image_file}`;
   
   pool.getConnection((err, connection) => {
     if (err) {
@@ -266,9 +283,32 @@ app.put("/updateProducte", (req, res) => {
         console.error('Error:', err);
         res.status(500).send("Error en actualitzar el producte");
       } else {
-        getProductes(connection);
-        res.send("Producte actualitzat!");
-        console.log(`Producte: ${producte.product_name} actualitzat correctament!`)
+        if (producte.string_imatge != undefined && producte.string_imatge != ""){
+          const base64Image = producte.string_imatge.split(';base64,').pop();
+          fs.writeFile(filePath, base64Image, { encoding: 'base64' }, function(err) {
+          if (err) {
+            console.error('Error en actualitzar la imatge:', err);
+            return res.status(500).send("Error en actualitzar la imatge");
+          }
+          console.log('Imatge actualitzada');
+          getProductes(connection);
+          res.send("Producte actualitzat!");
+          console.log(`Producte: ${producte.product_name} actualitzat correctament!`);
+        });
+        } else {
+          const imatgeError = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAAAAACIM/FCAAAChElEQVR4Ae3aMW/TQBxAcb70k91AAiGuGlZAtOlQApWaDiSdklZq2RPUTm1xUWL3PgqSpygkXlh88N54nn7S2Trd3y/CP5IQIUKECBEiRIgQIUKECBEiRIgQIUKECBEiRIgQIUKECBEiRIgQIUKECBEiRIgQIUKECBEiRIgQIUKECPmPIEKECBEiRIgQIeX82+FBO0naB4eTRRkt5P7sNWt1Rw9RQvKThI2SYR4f5OoVW2rfRAYpT6hqHc8WeVHki9mgRdWwiAmyfA9AdrlaW5tlAHxcxQMpK8feRbGxPEkrSREN5ARg/y780V0GMIwFcgXwLg9byvsAN3FA8lfAfr7jYQZ0nqKAfAb21vYVwNruSoEvMUDuE+Ai7IKECZA+RAA5A7JiN6TMgFHzIeUb4DLshoQZ0H1uPGQOvFzVQZYtYNF4yBg4DnWQMAAmjYccArN6yBQ4ajzkAFjUQ+ZAv/GQNpDXQ3Kg03hIAhT1kAJIhLi1/vJl39Ic6Mf3+a2K8PM7BgahtgEwjuKI0lqGjSI8opRdYFb3sk/jODSGEZCVuyFFDzgPzYc8JMBkN2QMpI8RQMIQ2LvdBblNgdM4Lh/aQJaHrf3sAe2nKCDhGqCfb3VEcx1UNQTItlzQ3fYAvoZYIMUHgHRSbiyPU4BPZUSX2JWEbLZcW5v2qByrmMYKxZCq1mA6z4sin08HLapOy8gGPddtttT5HuHobZiwUXr6K85h6KjLWm/PH+MdTy/GR/12knb6g8mPZ38YECJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAh0fUb5q7oCGreEVEAAAAASUVORK5CYII="
+          const base64Image = imatgeError.split(';base64,').pop();
+          fs.writeFile(filePath, base64Image, { encoding: 'base64' }, function(err) {
+          if (err) {
+            console.error('Error en actualitzar la imatge:', err);
+            return res.status(500).send("Error en actualitzar la imatge");
+          }
+          console.log('Imatge actualitzada');
+          getProductes(connection);
+          res.send("Producte actualitzat!");
+          console.log(`Producte: ${producte.product_name} actualitzat correctament!`);
+        });
+        }
       }
       connection.release();
     }); 
