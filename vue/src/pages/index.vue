@@ -33,8 +33,7 @@
           <v-btn icon @click="dialogoActivo = false" class="ml-auto mt-2 mr-2">
             <v-icon color="grey">mdi-close</v-icon>
           </v-btn>
-          <v-img :src="`http://dam.inspedralbes.cat:21345/sources/Imatges/${producto.image_file}`" height="350px" width="50%"
-            class="my-4 mx-auto" />
+          <v-img :src="productoSeleccionado.image_file ? `http://dam.inspedralbes.cat:21345/sources/Imatges/${productoSeleccionado.image_file}` : ''" height="350px" width="50%" class="my-4 mx-auto" />
           <v-card-title class="text-center">{{ productoSeleccionado.product_name }}</v-card-title>
           <v-card-text class="text-center">
             {{ productoSeleccionado.description }}
@@ -82,6 +81,13 @@ export default {
           throw new Error('Error en la respuesta de la red');
         }
         this.productos = await response.json();
+
+        // Asegúrate de que todos los productos tengan image_file
+        this.productos.forEach(producto => {
+          if (!producto.image_file) {
+            console.warn(`Producto ${producto.product_id} no tiene image_file`);
+          }
+        });
       } catch (error) {
         console.error('Error al obtener productos:', error);
       }
@@ -133,14 +139,18 @@ export default {
       }
     },
     dialogoProducto(producto) {
-      this.productoSeleccionado = producto;
-      this.ordenSeleccionada = this.comandes.find(comanda => comanda.product_id === producto.product_id) || null;
-      this.dialogoActivo = true;
+      if (producto) {
+        console.log("Producto seleccionado:", producto);
+        this.productoSeleccionado = producto;
+        this.ordenSeleccionada = this.comandes.find(comanda => comanda.product_id === producto.product_id) || null;
+        this.dialogoActivo = true;
+      } else {
+        console.error("Producto no encontrado");
+      }
     }
   }
 }
 </script>
-
 
 <style scoped>
 .description {
