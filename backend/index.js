@@ -231,7 +231,6 @@ app.post("/createProducte", (req, res) => {
 
 app.delete("/deleteProducte", (req, res) => {
   const idProducteEliminar = req.query.product_id
-  //Hola
   pool.getConnection((err, connection) => {
     if (err) {
       console.error('Error getting connection from pool:', err);
@@ -246,6 +245,14 @@ app.delete("/deleteProducte", (req, res) => {
         console.error('Error:', err);
         res.status(500).send("Error en eliminar el producte");
       } else {
+        var producteEliminar = {};
+        for (const producte of productes) {
+          if (producte.product_id = idProducteEliminar){
+            producteEliminar = producte
+          }
+        }
+        var filePath = `${process.cwd()}/sources/Imatges/${producteEliminar.image_file}`;
+        fs.unlinkSync(filePath);
         getProductes(connection);
         res.send("Producte eliminat!");
         console.log(`Producte amb id: ${idProducteEliminar} eliminat correctament!`)
