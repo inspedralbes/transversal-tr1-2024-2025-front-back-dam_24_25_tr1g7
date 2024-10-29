@@ -59,6 +59,8 @@
 </template>
 
 <script>
+import { io } from 'socket.io-client';
+
 export default {
     name: 'gestioComandes',
     data() {
@@ -70,10 +72,11 @@ export default {
             productoSeleccionado: {},
             nuevoEstado: '',
             estados: ['waiting', 'pending', 'shipped', 'verified', 'confirmed', 'canceled'],
-            urlComandes: 'http://dam.inspedralbes.cat:21345/getComandes',
-            urlProductos: 'http://dam.inspedralbes.cat:21345/getProductes',
-            urlActualizarEstado: 'http://dam.inspedralbes.cat:21345/updateComanda',
-            mensaje: '' // Mensaje para el feedback al usuario
+            urlBase: 'http://localhost:21345',
+            urlComandes: 'http://localhost:21345/getComandes',
+            urlProductos: 'http://localhost:21345/getProductes',
+            mensaje: '', // Mensaje para el feedback al usuario
+            socket: null,
         };
     },
     computed: {
@@ -82,10 +85,25 @@ export default {
         }
     },
     mounted() {
+        this.conectarSocket();
         this.obtenerComandes();
         this.obtenerProductos();
     },
     methods: {
+        conectarSocket() {
+            this.socket = io(this.urlBase);
+            this.socket.on('cambioEstado', this.actualizarEstadoComanda);
+        },
+        actualizarEstadoComanda({ order_id, status }) {
+            console.log(`Recibido cambio de estado: order_id=${order_id}, status=${status}`);
+            const comanda = this.comandes.find(c => c.order_id === parseInt(order_id));
+            if (comanda) {
+                console.log(`Actualizando comanda: ${JSON.stringify(comanda)}`);
+                comanda.status = status;
+            } else {
+                console.log(`No se encontró la comanda con id ${order_id}`);
+            }
+        },
         async obtenerComandes() {
             try {
                 const response = await fetch(this.urlComandes);
@@ -112,21 +130,17 @@ export default {
         },
         async cambiarEstado(orderId, nuevoEstado) {
             try {
-                const response = await fetch(`http://dam.inspedralbes.cat:21345/${nuevoEstado}?order_id=${orderId}`, {
+                const response = await fetch(`${this.urlBase}/${nuevoEstado}?order_id=${orderId}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        order_id: orderId,
-                    }),
                 });
                 if (!response.ok) {
                     throw new Error('Error al actualizar el estado');
                 }
-                await this.obtenerComandes(); // Obtener la lista actualizada de comandas
-                this.mensaje = 'Estado actualizado con éxito.'; // Mensaje de éxito
-                this.dialogoActivo = false; // Cerrar el diálogo
+                this.mensaje = 'Estado actualizado con éxito.';
+                this.dialogoActivo = false;
             } catch (error) {
                 console.error('Error al cambiar el estado de la comanda:', error);
                 this.mensaje = 'Error al cambiar el estado.';
@@ -143,14 +157,19 @@ export default {
         getImageSrc(productId) {
             const producto = this.productos.find(p => p.product_id === productId);
             return producto
-                ? `http://dam.inspedralbes.cat:21345/sources/Imatges/${producto.image_file}`
-                : 'http://dam.inspedralbes.cat:21345/sources/Imatges/imagen_no_disponible.jpg';
+                ? `${this.urlBase}/sources/Imatges/${producto.image_file}`
+                : `${this.urlBase}/sources/Imatges/imagen_no_disponible.jpg`;
         },
         dialogoComanda(comanda) {
             this.comandaSeleccionada = comanda;
             this.productoSeleccionado = this.productos.find(producto => producto.product_id === comanda.product_id) || {};
             this.nuevoEstado = comanda.status;
             this.dialogoActivo = true;
+        }
+    },
+    beforeUnmount() {
+        if (this.socket) {
+            this.socket.disconnect();
         }
     }
 };

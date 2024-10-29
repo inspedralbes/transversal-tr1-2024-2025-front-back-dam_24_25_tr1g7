@@ -22,7 +22,8 @@
                   </v-btn>
                 </v-card-actions>
               </div>
-              <v-img :src="`http://dam.inspedralbes.cat:21345/sources/Imatges/${producto.image_file}`" height="350px" width="50%" class="my-4" />
+              <v-img :src="`http://dam.inspedralbes.cat:21345/sources/Imatges/${producto.image_file}`" height="350px"
+                width="50%" class="my-4" />
             </v-card>
           </v-col>
         </v-row>
@@ -33,7 +34,9 @@
           <v-btn icon @click="dialogoActivo = false" class="ml-auto mt-2 mr-2">
             <v-icon color="grey">mdi-close</v-icon>
           </v-btn>
-          <v-img :src="productoSeleccionado.image_file ? `http://dam.inspedralbes.cat:21345/sources/Imatges/${productoSeleccionado.image_file}` : ''" height="350px" width="50%" class="my-4 mx-auto" />
+          <v-img
+            :src="productoSeleccionado.image_file ? `http://dam.inspedralbes.cat:21345/sources/Imatges/${productoSeleccionado.image_file}` : ''"
+            height="350px" width="50%" class="my-4 mx-auto" />
           <v-card-title class="text-center">{{ productoSeleccionado.product_name }}</v-card-title>
           <v-card-text class="text-center">
             {{ productoSeleccionado.description }}
@@ -49,6 +52,8 @@
 </template>
 
 <script>
+import { io } from 'socket.io-client';
+
 export default {
   data() {
     return {
@@ -57,8 +62,10 @@ export default {
       dialogoActivo: false,
       productoSeleccionado: {},
       ordenSeleccionada: null,
-      urlProductos: 'http://dam.inspedralbes.cat:21345/getProductes',
-      urlComandes: 'http://dam.inspedralbes.cat:21345/getComandes?status=verified'
+      urlBase: 'http://localhost:21345',
+      urlProductos: 'http://localhost:21345/getProductes',
+      urlComandes: 'http://localhost:21345/getComandes?status=verified',
+      socket: null,
     };
   },
   computed: {
@@ -70,24 +77,56 @@ export default {
     }
   },
   mounted() {
+    this.conectarSocket();
     this.obtenerProductos();
     this.obtenerComandes();
   },
   methods: {
+    conectarSocket() {
+      this.socket = io(this.urlBase);
+      this.socket.on('connect', () => {
+        console.log('Conectado al servidor Socket.IO');
+      });
+      this.socket.on('cambioEstado', this.actualizarEstadoComanda);
+    },
+    actualizarEstadoComanda({ order_id, status }) {
+      console.log(`Recibido cambio de estado: order_id=${order_id}, status=${status}`);
+      const comanda = this.comandes.find(c => c.order_id === parseInt(order_id));
+      if (comanda) {
+        comanda.status = status;
+        console.log("aaaaaaaaaaaaaaaa", comanda);
+        
+        if (status !== 'verified') {
+          this.comandes = this.comandes.filter(c => c.order_id !== parseInt(order_id));
+          console.log("bbbbbbbbbbbbbbbb", this.comandes);
+          
+        }
+      } else if (status === 'verified') {
+        // Si es una nueva comanda verificada, obtenerla y añadirla a la lista
+        console.log("cccccccccccccccc", order_id);
+        
+        this.obtenerNuevaComanda(order_id);
+      }
+    },
+
+    async obtenerNuevaComanda(order_id) {
+      try {
+        const response = await fetch(`${this.urlBase}/getComandes?order_id=${order_id}`);
+        if (!response.ok) throw new Error('Error al obtener la nueva comanda');
+        const nuevaComanda = await response.json();
+        if (nuevaComanda.status === 'verified') {
+          this.comandes.push(nuevaComanda);
+          this.obtenerProductos(); // Actualiza la lista de productos si es necesario
+        }
+      } catch (error) {
+        console.error('Error al obtener nueva comanda:', error);
+      }
+    },
     async obtenerProductos() {
       try {
         const response = await fetch(this.urlProductos);
-        if (!response.ok) {
-          throw new Error('Error en la respuesta de la red');
-        }
+        if (!response.ok) throw new Error('Error en la respuesta de la red');
         this.productos = await response.json();
-
-        // Asegúrate de que todos los productos tengan image_file
-        this.productos.forEach(producto => {
-          if (!producto.image_file) {
-            console.warn(`Producto ${producto.product_id} no tiene image_file`);
-          }
-        });
       } catch (error) {
         console.error('Error al obtener productos:', error);
       }
@@ -95,9 +134,7 @@ export default {
     async obtenerComandes() {
       try {
         const response = await fetch(this.urlComandes);
-        if (!response.ok) {
-          throw new Error('Error en la respuesta de la red');
-        }
+        if (!response.ok) throw new Error('Error en la respuesta de la red');
         this.comandes = await response.json();
         console.log('Comandes obtenidas:', this.comandes);
       } catch (error) {
@@ -107,14 +144,11 @@ export default {
     async aceptarProducto(id) {
       const producto = this.comandes.find(c => c.product_id === id);
       try {
-        const response = await fetch(`http://dam.inspedralbes.cat:21345/confirmed?order_id=${producto.order_id}`, {
+        const response = await fetch(`${this.urlBase}/confirmed?order_id=${producto.order_id}`, {
           method: 'PUT',
         });
-        if (!response.ok) {
-          throw new Error('Error al actualizar el estado del producto');
-        }
-        producto.status = 'confirmed';
-        alert(`Producto ${producto.product_name} aceptado y confirmado.`);
+        if (!response.ok) throw new Error('Error al actualizar el estado del producto');
+        alert(`Producto ${producto.product_id} aceptado y confirmado.`);
       } catch (error) {
         console.error('Error al aceptar producto:', error);
         alert('Error al aceptar producto.');
@@ -124,14 +158,11 @@ export default {
       const producto = this.comandes.find(c => c.product_id === id);
       if (producto) {
         try {
-          const response = await fetch(`http://dam.inspedralbes.cat:21345/canceled?order_id=${producto.order_id}`, {
+          const response = await fetch(`${this.urlBase}/canceled?order_id=${producto.order_id}`, {
             method: 'PUT',
           });
-          if (!response.ok) {
-            throw new Error('Error al actualizar el estado del producto');
-          }
-          producto.status = 'canceled';
-          alert(`Producto ${producto.product_name} rechazado.`);
+          if (!response.ok) throw new Error('Error al actualizar el estado del producto');
+          alert(`Producto ${producto.product_id} rechazado.`);
         } catch (error) {
           console.error('Error al rechazar producto:', error);
           alert('Error al rechazar producto.');
@@ -147,6 +178,11 @@ export default {
       } else {
         console.error("Producto no encontrado");
       }
+    }
+  },
+  beforeUnmount() {
+    if (this.socket) {
+      this.socket.disconnect();
     }
   }
 }
