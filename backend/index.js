@@ -28,7 +28,7 @@ var pool = mysql.createPool({
   host: "localhost",
   user: "root",
   password: "",
-  database: 'a23alechasan_PR1',
+  database: 'gr7pr1',
   port: 3306,
   connectionLimit: 10 
 });
