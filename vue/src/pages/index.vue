@@ -62,9 +62,9 @@ export default {
       dialogoActivo: false,
       productoSeleccionado: {},
       ordenSeleccionada: null,
-      urlBase: 'http://localhost:21345',
-      urlProductos: 'http://localhost:21345/getProductes',
-      urlComandes: 'http://localhost:21345/getComandes?status=verified',
+      urlBase: 'http://dam.inspedralbes.cat:21345',
+      urlProductos: 'http://dam.inspedralbes.cat:21345/getProductes',
+      urlComandes: 'http://dam.inspedralbes.cat:21345/getComandes?status=verified',
       socket: null,
     };
   },
@@ -102,7 +102,6 @@ export default {
           
         }
       } else if (status === 'verified') {
-        // Si es una nueva comanda verificada, obtenerla y añadirla a la lista
         console.log("cccccccccccccccc", order_id);
         
         this.obtenerNuevaComanda(order_id);
@@ -116,7 +115,7 @@ export default {
         const nuevaComanda = await response.json();
         if (nuevaComanda.status === 'verified') {
           this.comandes.push(nuevaComanda);
-          this.obtenerProductos(); // Actualiza la lista de productos si es necesario
+          this.obtenerProductos();
         }
       } catch (error) {
         console.error('Error al obtener nueva comanda:', error);
