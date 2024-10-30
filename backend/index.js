@@ -347,12 +347,12 @@ app.put("/updateProducte", (req, res) => {
 app.get("/getComandes", (req, res) => {
   if (req.query.order_id) {
     const idComanda = Number(req.query.order_id);
-    for (const comanda of comandes) {
-      if (comanda.order_id == idComanda) {
-        res.json(comanda);
-      } else {
-        res.send(`No hi ha cap producte amb id: ${idComanda}`);
-      }
+    const comandaTrobada = comandes.find(comanda => comanda.order_id === idComanda);
+    
+    if (comandaTrobada) {
+      res.json(comandaTrobada);
+    } else {
+      res.status(404).send(`No hi ha cap comanda amb id: ${idComanda}`);
     }
   } else {
     res.json(comandes);
@@ -418,13 +418,18 @@ app.delete("/deleteComanda", (req, res) => {
 const cambioEstado = (order_id, status) => {
   console.log(`Emitiendo cambio de estado: order_id=${order_id}, status=${status}`);
   io.emit('cambioEstado', { order_id, status });
+  
+  const comanda = comandes.find(c => c.order_id === Number(order_id));
+  if (comanda) {
+    comanda.status = status;
+    console.log(`L'ordre: ${order_id} està '${status}'!`);
+  }
 };
 
 const handleStateChange = (status) => {
   return (req, res) => {
     const order_id = req.query.order_id;
     
-    // Asegurarse de que no se envíe respuesta más de una vez
     const sendResponse = (statusCode, message) => {
       if (!res.headersSent) {
         res.status(statusCode).send(message);
@@ -440,7 +445,7 @@ const handleStateChange = (status) => {
       const query = `UPDATE Orders SET status = ? WHERE order_id = ?`;
 
       connection.query(query, [status, order_id], (err, results) => {
-        connection.release(); // Liberar la conexión
+        connection.release();
 
         if (err) {
           console.error('Error:', err);
@@ -450,7 +455,6 @@ const handleStateChange = (status) => {
         cambioEstado(order_id, status);
         console.log(`L'ordre: ${order_id} està '${status}'!`);
 
-        // Asegurarse de que no se intente enviar una respuesta después de que ya se haya enviado
         sendResponse(200, `Ordre actualitzada a '${status}'!`);
       });
     });
