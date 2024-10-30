@@ -72,9 +72,9 @@ export default {
             productoSeleccionado: {},
             nuevoEstado: '',
             estados: ['waiting', 'pending', 'shipped', 'verified', 'confirmed', 'canceled'],
-            urlBase: 'http://dam.inspedralbes.cat:21345',
-            urlComandes: 'http://dam.inspedralbes.cat:21345/getComandes',
-            urlProductos: 'http://dam.inspedralbes.cat:21345/getProductes',
+            urlBase: 'http://localhost:21345',
+            urlComandes: 'http://localhost:21345/getComandes',
+            urlProductos: 'http://localhost:21345/getProductes',
             mensaje: '',
             socket: null,
         };
@@ -93,6 +93,7 @@ export default {
         conectarSocket() {
             this.socket = io(this.urlBase);
             this.socket.on('cambioEstado', this.actualizarEstadoComanda);
+            this.socket.on('nuevaComanda', this.agregarNuevaComanda);
         },
         actualizarEstadoComanda({ order_id, status }) {
             console.log(`Recibido cambio de estado: order_id=${order_id}, status=${status}`);
@@ -102,6 +103,27 @@ export default {
                 comanda.status = status;
             } else {
                 console.log(`No se encontró la comanda con id ${order_id}`);
+            }
+        },
+        agregarNuevaComanda(comanda) {
+            console.log('Nueva comanda recibida:', comanda);
+            if (comanda.status !== 'verified') {
+                this.comandes.push(comanda);
+                this.obtenerDetallesProducto(comanda.product_id);
+            }
+        },
+        async obtenerDetallesProducto(productId) {
+            try {
+                const response = await fetch(`${this.urlProductos}?product_id=${productId}`);
+                if (!response.ok) {
+                    throw new Error('Error en la respuesta de la red');
+                }
+                const producto = await response.json();
+                if (!this.productos.some(p => p.product_id === producto.product_id)) {
+                    this.productos.push(producto);
+                }
+            } catch (error) {
+                console.error('Error al obtener detalles del producto:', error);
             }
         },
         async obtenerComandes() {

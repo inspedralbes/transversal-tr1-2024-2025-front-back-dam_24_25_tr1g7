@@ -347,13 +347,12 @@ app.put("/updateProducte", (req, res) => {
 app.get("/getComandes", (req, res) => {
   if (req.query.order_id) {
     const idComanda = Number(req.query.order_id);
-    const comandaTrobada = comandes.find(comanda => comanda.order_id === idComanda);
-    
-    if (comandaTrobada) {
-      res.json(comandaTrobada);
-    } else {
-      res.status(404).send(`No hi ha cap comanda amb id: ${idComanda}`);
+    for (const comanda of comandes) {
+      if (comanda.order_id == idComanda) {
+        return res.json(comanda);
+      }
     }
+    return res.status(404).send(`No hi ha cap comanda amb id: ${idComanda}`);
   } else {
     res.json(comandes);
   }
@@ -363,28 +362,34 @@ app.post("/createComanda", (req, res) => {
   const novaComanda = {
     user_id: req.query.user_id,
     product_id: req.query.product_id,
-    total: req.query.total
+    total: req.query.total,
+    status: 'waiting' // Asumiendo que el estado inicial es 'waiting'
   };
   
   pool.getConnection((err, connection) => {
     if (err) {
       console.error('Error getting connection from pool:', err);
-      res.status(500).send("Error al obtenir connexió");
-      return;
+      return res.status(500).send("Error al obtenir connexió");
     }
 
-    const query = `INSERT INTO Orders (user_id, product_id, total) VALUES  (?, ?, ?)`;
+    const query = `INSERT INTO Orders (user_id, product_id, total, status) VALUES (?, ?, ?, ?)`;
   
-    connection.query(query, [novaComanda.user_id, novaComanda.product_id, novaComanda.total], (err, results) => {
+    connection.query(query, [novaComanda.user_id, novaComanda.product_id, novaComanda.total, novaComanda.status], (err, results) => {
+      connection.release();
+
       if (err) {
         console.error('Error:', err);
-        res.status(500).send("Error en crear la comanda");
-      } else {
-        getComandes(connection);
-        res.send("Comanda afegida!");
-        console.log(`Comanda de: ${novaComanda.user_id} afegida correctament!`)
+        return res.status(500).send("Error en crear la comanda");
       }
-      connection.release();
+
+      novaComanda.order_id = results.insertId;
+      comandes.push(novaComanda);
+      
+      // Emitir evento de nueva comanda
+      io.emit('nuevaComanda', novaComanda);
+
+      res.send("Comanda afegida!");
+      console.log(`Comanda de: ${novaComanda.user_id} afegida correctament!`);
     });
   });
 });
@@ -515,15 +520,16 @@ function getProductes(connection) {
 }
 
 function getComandes(connection) {
-  connection.query('SELECT * FROM Orders', (err, results) => {
+  const query = `SELECT * FROM Orders`;
+  connection.query(query, (err, results) => {
     if (err) {
-      console.error('Error:', err);
+      console.error('Error al obtener comandas:', err);
     } else {
       comandes = results;
+      console.log('Comandas actualizadas');
     }
   });
 }
-
 function esborrarComanda(connection ,order_id) {
   const query = `DELETE FROM Orders WHERE order_id=?;`;
   connection.query(query, [order_id], (err, results) => {
