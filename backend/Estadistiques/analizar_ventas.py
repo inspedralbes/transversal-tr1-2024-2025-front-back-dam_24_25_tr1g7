@@ -56,11 +56,11 @@ ventas_semanales['semana_fin'] = ventas_semanales['semana_inicio'] + pd.to_timed
 weekly_output_dir = os.path.join(general_output_dir, 'semanales')
 os.makedirs(weekly_output_dir, exist_ok=True)
 
-# Gráfico de ventas totales semanales con identificador de semana
+# Gráfico de ventas totales semanales
 plt.figure(figsize=(12, 6))
 sns.lineplot(data=ventas_semanales, x='semana_inicio', y='total_venta', marker='o', color='blue')
 plt.title('Vendes Totals Setmanals')
-plt.xlabel('Semana (Inicio)')
+plt.xlabel('Semana (Inicio - Lunes)')
 plt.ylabel('Total de Vendes')
 plt.xticks(rotation=45)
 plt.tight_layout()
@@ -68,19 +68,17 @@ plt.savefig(os.path.join(weekly_output_dir, 'vendes_totals_setmanals.png'))
 plt.close()
 
 # Generar gráfico de ventas totales mensuales
-# Añadir columna de inicio y fin de mes
+# Añadir columna de inicio de mes
 data['mes_inicio'] = data['data'].dt.to_period('M').dt.to_timestamp()
-data['mes_fin'] = data['mes_inicio'] + pd.offsets.MonthEnd(1)
 
 # Calcular las ventas totales mensuales
 ventas_mensuales = data.groupby('mes_inicio')['total_venta'].sum().reset_index()
-ventas_mensuales['mes_fin'] = ventas_mensuales['mes_inicio'] + pd.offsets.MonthEnd(0)
 
 # Crear una carpeta para informes mensuales
 monthly_output_dir = os.path.join(general_output_dir, 'mensuales')
 os.makedirs(monthly_output_dir, exist_ok=True)
 
-# Gráfico de ventas totales mensuales con identificador de mes
+# Gráfico de ventas totales mensuales
 plt.figure(figsize=(12, 6))
 sns.lineplot(data=ventas_mensuales, x='mes_inicio', y='total_venta', marker='o', color='purple')
 plt.title('Vendes Totals Mensuals')
