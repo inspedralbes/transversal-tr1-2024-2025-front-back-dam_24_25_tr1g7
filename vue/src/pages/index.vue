@@ -62,9 +62,9 @@ export default {
       dialogoActivo: false,
       productoSeleccionado: {},
       ordenSeleccionada: null,
-      urlBase: 'http://dam.inspedralbes.cat:21345',
-      urlProductos: 'http://dam.inspedralbes.cat:21345/getProductes',
-      urlComandes: 'http://dam.inspedralbes.cat:21345/getComandes?status=verified',
+      urlBase: 'http://localhost:21345',
+      urlProductos: 'http://localhost:21345/getProductes',
+      urlComandes: 'http://localhost:21345/getComandes?status=verified',
       socket: null,
     };
   },
