@@ -56,7 +56,7 @@ export default {
     methods: {
         async cargarInformes() {
             try {
-                const response = await fetch('http://localhost:21345/listarInformes');
+                const response = await fetch('http://tr1g7.dam.inspedralbes.cat:21345/listarInformes');
                 if (!response.ok) throw new Error("Error al cargar los informes");
                 this.informes = await response.json();
 
@@ -74,15 +74,15 @@ export default {
         actualizarImagenes() {
             if (this.tipoSeleccionado === 'fechas' && this.fechaSeleccionada) {
                 this.imagenes = (this.informes.fechas[this.fechaSeleccionada] || []).map(
-                    img => `http://localhost:21345/informes/${this.fechaSeleccionada}/${img}`
+                    img => `http://tr1g7.dam.inspedralbes.cat:21345/informes/${this.fechaSeleccionada}/${img}`
                 );
             } else if (this.tipoSeleccionado === 'semanales') {
                 this.imagenes = (this.informes.semanales || []).map(
-                    img => `http://localhost:21345/informes/semanales/${img}`
+                    img => `http://tr1g7.dam.inspedralbes.cat:21345/informes/semanales/${img}`
                 );
             } else if (this.tipoSeleccionado === 'mensuales') {
                 this.imagenes = (this.informes.mensuales || []).map(
-                    img => `http://localhost:21345/informes/mensuales/${img}`
+                    img => `http://tr1g7.dam.inspedralbes.cat:21345/informes/mensuales/${img}`
                 );
             } else {
                 this.imagenes = [];

@@ -72,9 +72,9 @@ export default {
             productoSeleccionado: {},
             nuevoEstado: '',
             estados: ['waiting', 'pending', 'shipped', 'verified', 'confirmed', 'canceled'],
-            urlBase: 'http://localhost:21345',
-            urlComandes: 'http://localhost:21345/getComandes',
-            urlProductos: 'http://localhost:21345/getProductes',
+            urlBase: 'http://tr1g7.dam.inspedralbes.cat:21345',
+            urlComandes: 'http://tr1g7.dam.inspedralbes.cat:21345/getComandes',
+            urlProductos: 'http://tr1g7.dam.inspedralbes.cat:21345/getProductes',
             mensaje: '',
             socket: null,
         };
