@@ -16,6 +16,7 @@ app.use(cors());
 const port = 21345;
 
 app.use('/sources/Imatges', express.static(path.join(__dirname, 'sources/Imatges')))
+app.use('/informes', express.static(path.join(__dirname, 'Estadistiques', 'informes')));
 
 var mysql = require('mysql2');
 
@@ -48,7 +49,7 @@ var pool = mysql.createPool({
   host: "localhost",
   user: "root",
   password: "",
-  database: 'TR1',
+  database: 'gr7pr1',
   port: 3306,
   connectionLimit: 10 
 });
@@ -62,6 +63,53 @@ var pool = mysql.createPool({
   connectionLimit: 10 
 }); */
 
+
+/*<-------------------------------------- Estadistiques ---------------------------------------->*/
+
+// Ruta para listar las carpetas y las imágenes disponibles dentro de `informes`
+app.get('/listarInformes', (req, res) => {
+  const informesPath = path.join(__dirname, 'Estadistiques', 'informes');
+
+  console.log('Path de informes:', informesPath); // Para depuración
+
+  fs.readdir(informesPath, (err, files) => {
+      if (err) {
+          console.error('Error al leer el directorio de informes:', err);
+          return res.status(500).json({ error: 'Error al leer los informes' });
+      }
+
+      const informes = {
+          fechas: {},
+          semanales: [],
+          mensuales: []
+      };
+
+      // Procesar las carpetas
+      files.forEach((file) => {
+          const filePath = path.join(informesPath, file);
+          try {
+              // Verificar si es un directorio
+              if (fs.statSync(filePath).isDirectory()) {
+                  // Si es la carpeta "semanales" o "mensuales", agregar imágenes directamente
+                  if (file === 'semanales' || file === 'mensuales') {
+                      const imagenes = fs.readdirSync(filePath)
+                          .filter(img => img.endsWith('.png') || img.endsWith('.jpg') || img.endsWith('.jpeg'));
+                      informes[file] = imagenes; // Almacenar imágenes en el objeto bajo su nombre de carpeta
+                  } else {
+                      // Si es una carpeta de fecha, agregar al objeto de fechas
+                      const imagenes = fs.readdirSync(filePath)
+                          .filter(img => img.endsWith('.png') || img.endsWith('.jpg') || img.endsWith('.jpeg'));
+                      informes.fechas[file] = imagenes;
+                  }
+              }
+          } catch (error) {
+              console.error(`Error procesando el directorio ${filePath}:`, error);
+          }
+      });
+
+      res.json(informes); // Enviar las fechas y carpetas especiales al cliente
+  });
+});
 
 /*<-------------------------------------- Usuaris ---------------------------------------->*/
 
