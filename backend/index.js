@@ -6,6 +6,8 @@ const fs = require('fs');
 const cors = require('cors');
 const path = require('path');
 const { spawn } = require("child_process");
+const http = require('http');
+const { Server } = require('socket.io');
 
 const appJSON = express
 const app = express();
@@ -21,6 +23,24 @@ var usuaris = [];
 var productes = [];
 var comandes = [];
 
+/*<-------------------------------------- Sockets ---------------------------------------->*/
+
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  cors: {
+    origin: "*", // O especifica el origen de tu cliente
+    methods: ["GET", "POST", "PUT", "DELETE"],
+  }
+});
+
+io.on('connection', (socket) => {
+  console.log('a user connected');
+
+  socket.on('disconnect', () => {
+    console.log('user disconnected');
+  });
+});
 
 /*<-------------------------------------- Connexions ---------------------------------------->*/
 
@@ -28,7 +48,7 @@ var pool = mysql.createPool({
   host: "localhost",
   user: "root",
   password: "",
-  database: 'a23alechasan_PR1',
+  database: 'TR1',
   port: 3306,
   connectionLimit: 10 
 });
@@ -152,7 +172,7 @@ app.put("/updateUsuari", (req, res) => {
 });
 
 /*<-------------------------------------- Productes ---------------------------------------->*/
-
+//e
 app.get("/getProductes", (req, res) => {
   if (req.query.product_id) {
     const idProducte = Number(req.query.product_id);
@@ -329,11 +349,10 @@ app.get("/getComandes", (req, res) => {
     const idComanda = Number(req.query.order_id);
     for (const comanda of comandes) {
       if (comanda.order_id == idComanda) {
-        res.json(comanda);
-      } else {
-        res.send(`No hi ha cap producte amb id: ${idComanda}`);
+        return res.json(comanda);
       }
     }
+    return res.status(404).send(`No hi ha cap comanda amb id: ${idComanda}`);
   } else {
     res.json(comandes);
   }
@@ -343,28 +362,34 @@ app.post("/createComanda", (req, res) => {
   const novaComanda = {
     user_id: req.query.user_id,
     product_id: req.query.product_id,
-    total: req.query.total
+    total: req.query.total,
+    status: 'waiting' // Asumiendo que el estado inicial es 'waiting'
   };
   
   pool.getConnection((err, connection) => {
     if (err) {
       console.error('Error getting connection from pool:', err);
-      res.status(500).send("Error al obtenir connexió");
-      return;
+      return res.status(500).send("Error al obtenir connexió");
     }
 
-    const query = `INSERT INTO Orders (user_id, product_id, total) VALUES  (?, ?, ?)`;
+    const query = `INSERT INTO Orders (user_id, product_id, total, status) VALUES (?, ?, ?, ?)`;
   
-    connection.query(query, [novaComanda.user_id, novaComanda.product_id, novaComanda.total], (err, results) => {
+    connection.query(query, [novaComanda.user_id, novaComanda.product_id, novaComanda.total, novaComanda.status], (err, results) => {
+      connection.release();
+
       if (err) {
         console.error('Error:', err);
-        res.status(500).send("Error en crear la comanda");
-      } else {
-        getComandes(connection);
-        res.send("Comanda afegida!");
-        console.log(`Comanda de: ${novaComanda.user_id} afegida correctament!`)
+        return res.status(500).send("Error en crear la comanda");
       }
-      connection.release();
+
+      novaComanda.order_id = results.insertId;
+      comandes.push(novaComanda);
+      
+      // Emitir evento de nueva comanda
+      io.emit('nuevaComanda', novaComanda);
+
+      res.send("Comanda afegida!");
+      console.log(`Comanda de: ${novaComanda.user_id} afegida correctament!`);
     });
   });
 });
@@ -395,142 +420,69 @@ app.delete("/deleteComanda", (req, res) => {
   });
 });
 
-app.put("/pending", (req, res) => {
-  const order_id = req.query.order_id
+const cambioEstado = (order_id, status) => {
+  console.log(`Emitiendo cambio de estado: order_id=${order_id}, status=${status}`);
+  io.emit('cambioEstado', { order_id, status });
   
-  pool.getConnection((err, connection) => {
-    if (err) {
-      console.error('Error getting connection from pool:', err);
-      res.status(500).send("Error al obtenir connexió");
-      return;
-    }
+  const comanda = comandes.find(c => c.order_id === Number(order_id));
+  if (comanda) {
+    comanda.status = status;
+    console.log(`L'ordre: ${order_id} està '${status}'!`);
+  }
+};
 
-    const query = `UPDATE Orders SET status = 'pending' WHERE order_id = ?`;
-  
-    connection.query(query, [order_id], (err, results) => {
-      if (err) {
-        console.error('Error:', err);
-        res.status(500).send("Error en actualitzar l'ordre");
-      } else {
-        getComandes(connection);
-        res.send("Ordre actualitzada a 'pending'!");
-        console.log(`L'ordre: ${order_id} està 'pending'!`)
+const handleStateChange = (status) => {
+  return (req, res) => {
+    const order_id = req.query.order_id;
+    
+    const sendResponse = (statusCode, message) => {
+      if (!res.headersSent) {
+        res.status(statusCode).send(message);
       }
-      connection.release();
-    }); 
-  });
-});
+    };
 
-app.put("/shipped", (req, res) => {
-  const order_id = req.query.order_id
-  
-  pool.getConnection((err, connection) => {
-    if (err) {
-      console.error('Error getting connection from pool:', err);
-      res.status(500).send("Error al obtenir connexió");
-      return;
-    }
-
-    const query = `UPDATE Orders SET status = 'shipped' WHERE order_id = ?`;
-  
-    connection.query(query, [order_id], (err, results) => {
+    pool.getConnection((err, connection) => {
       if (err) {
-        console.error('Error:', err);
-        res.status(500).send("Error en actualitzar l'ordre");
-      } else {
-        getComandes(connection);
-        res.send("Ordre actualitzada a 'shipped'!");
-        console.log(`L'ordre: ${order_id} ha estat enviada`)
+        console.error('Error getting connection from pool:', err);
+        return sendResponse(500, "Error al obtenir connexió");
       }
-      connection.release();
-    }); 
-  });
-});
 
-app.put("/verified", (req, res) => {
-  const order_id = req.query.order_id
-  
-  pool.getConnection((err, connection) => {
-    if (err) {
-      console.error('Error getting connection from pool:', err);
-      res.status(500).send("Error al obtenir connexió");
-      return;
-    }
+      const query = `UPDATE Orders SET status = ? WHERE order_id = ?`;
 
-    const query = `UPDATE Orders SET status = 'verified' WHERE order_id = ?`;
-  
-    connection.query(query, [order_id], (err, results) => {
-      if (err) {
-        console.error('Error:', err);
-        res.status(500).send("Error en actualitzar l'ordre");
-      } else {
-        getComandes(connection);
-        res.send("Ordre actualitzada a 'verified'!");
-        console.log(`L'ordre: ${order_id} ha estat verificada`)
-      }
-      connection.release();
-    }); 
-  });
-});
+      connection.query(query, [status, order_id], (err, results) => {
+        connection.release();
 
-app.put("/confirmed", (req, res) => {
-  const order_id = req.query.order_id
-  
-  pool.getConnection((err, connection) => {
-    if (err) {
-      console.error('Error getting connection from pool:', err);
-      res.status(500).send("Error al obtenir connexió");
-      return;
-    }
+        if (err) {
+          console.error('Error:', err);
+          return sendResponse(500, `Error en actualitzar l'ordre a '${status}'`);
+        }
 
-    const query = `UPDATE Orders SET status = 'confirmed' WHERE order_id = ?`;
-  
-    connection.query(query, [order_id], (err, results) => {
-      if (err) {
-        console.error('Error:', err);
-        res.status(500).send("Error en actualitzar l'ordre");
-      } else {
-        getComandes(connection);
-        res.send("Ordre actualitzada a 'confirmed'!");
-        console.log(`L'ordre: ${order_id} ha estat confirmada`)
-      }
-      connection.release();
-    }); 
-  });
-});
+        cambioEstado(order_id, status);
+        console.log(`L'ordre: ${order_id} està '${status}'!`);
 
-app.put("/canceled", (req, res) => {
-  const order_id = req.query.order_id
-  
-  pool.getConnection((err, connection) => {
-    if (err) {
-      console.error('Error getting connection from pool:', err);
-      res.status(500).send("Error al obtenir connexió");
-      return;
-    }
+        sendResponse(200, `Ordre actualitzada a '${status}'!`);
+      });
+    });
+  };
+};
 
-    const query = `UPDATE Orders SET status = 'canceled' WHERE order_id = ?`;
-  
-    connection.query(query, [order_id], (err, results) => {
-      if (err) {
-        console.error('Error:', err);
-        res.status(500).send("Error en actualitzar l'ordre");
-      } else {
-        esborrarComanda(connection, order_id)
-        getComandes(connection);
-        res.send("Ordre actualitzada a 'canceled'!");
-        console.log(`L'ordre: ${order_id} ha estat cancelada`)
-      }
-      connection.release();
-    }); 
-  });
-});
+
+app.put("/waiting", handleStateChange('waiting'));
+app.put("/pending", handleStateChange('pending'));
+app.put("/shipped", handleStateChange('shipped'));
+app.put("/verified", handleStateChange('verified'));
+app.put("/confirmed", handleStateChange('confirmed'));
+app.put("/canceled", handleStateChange('canceled'));
 
 /*<-------------------------------------- Inici App ---------------------------------------->*/
 
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
-})
+// app.listen(port, () => {
+//   console.log(`Example app listening on port ${port}`)
+// })
+
+server.listen(port, () => {
+  console.log(`Servidor corriendo en http://localhost:${port}`);
+});
 
 pool.getConnection((err, connection) => {
   if (err) {
@@ -568,15 +520,16 @@ function getProductes(connection) {
 }
 
 function getComandes(connection) {
-  connection.query('SELECT * FROM Orders', (err, results) => {
+  const query = `SELECT * FROM Orders`;
+  connection.query(query, (err, results) => {
     if (err) {
-      console.error('Error:', err);
+      console.error('Error al obtener comandas:', err);
     } else {
       comandes = results;
+      console.log('Comandas actualizadas');
     }
   });
 }
-
 function esborrarComanda(connection ,order_id) {
   const query = `DELETE FROM Orders WHERE order_id=?;`;
   connection.query(query, [order_id], (err, results) => {

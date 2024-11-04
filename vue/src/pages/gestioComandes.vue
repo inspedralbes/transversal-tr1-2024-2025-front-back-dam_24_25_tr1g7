@@ -20,8 +20,8 @@
                                     </v-card-subtitle>
                                 </v-card-text>
                             </div>
-                            <v-img :src="`http://dam.inspedralbes.cat:21345/sources/Imatges/${getImageFile(comanda.product_id)}`"
-                                height="350px" width="50%" class="my-4 mx-auto" />
+                            <v-img :src="getImageSrc(comanda.product_id)" height="350px" width="50%"
+                                class="my-4 mx-auto" />
                         </v-card>
                     </v-col>
                 </v-row>
@@ -32,19 +32,26 @@
                     <v-btn icon @click="dialogoActivo = false" class="ml-auto mt-2 mr-2">
                         <v-icon color="grey">mdi-close</v-icon>
                     </v-btn>
-                    <v-img :src="`http://dam.inspedralbes.cat:21345/sources/Imatges/${getImageFile(comanda.product_id)}`"
-                        height="350px" width="50%" class="my-2 mx-auto" />
+                    <v-img :src="getImageSrc(comandaSeleccionada.product_id)" height="350px" width="50%"
+                        class="my-2 mx-auto" />
                     <v-card-text class="text-center">
                         {{ comandaSeleccionada.description }}
                     </v-card-text>
                     <v-card-text class="text-center">
-                        <strong>Estado:</strong> {{ comandaSeleccionada.status }}<br />
+                        <strong>Estado:</strong>
+                        <v-select v-model="nuevoEstado" :items="estados" label="Cambiar estado" />
+                        <br />
                         <strong>Precio:</strong> {{ comandaSeleccionada.total }}€<br />
                     </v-card-text>
                     <v-card-text class="text-center">
                         <strong>{{ productoSeleccionado.product_name }}</strong><br />
                         <strong>Descripción:</strong> {{ productoSeleccionado.description }}<br />
                     </v-card-text>
+                    <v-card-actions class="justify-center">
+                        <v-btn color="primary" @click="cambiarEstado(comandaSeleccionada.order_id, nuevoEstado)">
+                            Cambiar Estado
+                        </v-btn>
+                    </v-card-actions>
                 </v-card>
             </v-dialog>
         </v-main>
@@ -52,6 +59,8 @@
 </template>
 
 <script>
+import { io } from 'socket.io-client';
+
 export default {
     name: 'gestioComandes',
     data() {
@@ -61,8 +70,13 @@ export default {
             dialogoActivo: false,
             comandaSeleccionada: {},
             productoSeleccionado: {},
-            urlComandes: 'http://dam.inspedralbes.cat:21345/getComandes',
-            urlProductos: 'http://dam.inspedralbes.cat:21345/getProductes'
+            nuevoEstado: '',
+            estados: ['waiting', 'pending', 'shipped', 'verified', 'confirmed', 'canceled'],
+            urlBase: 'http://localhost:21345',
+            urlComandes: 'http://localhost:21345/getComandes',
+            urlProductos: 'http://localhost:21345/getProductes',
+            mensaje: '',
+            socket: null,
         };
     },
     computed: {
@@ -71,10 +85,47 @@ export default {
         }
     },
     mounted() {
+        this.conectarSocket();
         this.obtenerComandes();
         this.obtenerProductos();
     },
     methods: {
+        conectarSocket() {
+            this.socket = io(this.urlBase);
+            this.socket.on('cambioEstado', this.actualizarEstadoComanda);
+            this.socket.on('nuevaComanda', this.agregarNuevaComanda);
+        },
+        actualizarEstadoComanda({ order_id, status }) {
+            console.log(`Recibido cambio de estado: order_id=${order_id}, status=${status}`);
+            const comanda = this.comandes.find(c => c.order_id === parseInt(order_id));
+            if (comanda) {
+                console.log(`Actualizando comanda: ${JSON.stringify(comanda)}`);
+                comanda.status = status;
+            } else {
+                console.log(`No se encontró la comanda con id ${order_id}`);
+            }
+        },
+        agregarNuevaComanda(comanda) {
+            console.log('Nueva comanda recibida:', comanda);
+            if (comanda.status !== 'verified') {
+                this.comandes.push(comanda);
+                this.obtenerDetallesProducto(comanda.product_id);
+            }
+        },
+        async obtenerDetallesProducto(productId) {
+            try {
+                const response = await fetch(`${this.urlProductos}?product_id=${productId}`);
+                if (!response.ok) {
+                    throw new Error('Error en la respuesta de la red');
+                }
+                const producto = await response.json();
+                if (!this.productos.some(p => p.product_id === producto.product_id)) {
+                    this.productos.push(producto);
+                }
+            } catch (error) {
+                console.error('Error al obtener detalles del producto:', error);
+            }
+        },
         async obtenerComandes() {
             try {
                 const response = await fetch(this.urlComandes);
@@ -84,6 +135,7 @@ export default {
                 this.comandes = await response.json();
             } catch (error) {
                 console.error('Error al obtener comandas:', error);
+                this.mensaje = 'Error al obtener comandas.';
             }
         },
         async obtenerProductos() {
@@ -95,6 +147,25 @@ export default {
                 this.productos = await response.json();
             } catch (error) {
                 console.error('Error al obtener productos:', error);
+                this.mensaje = 'Error al obtener productos.';
+            }
+        },
+        async cambiarEstado(orderId, nuevoEstado) {
+            try {
+                const response = await fetch(`${this.urlBase}/${nuevoEstado}?order_id=${orderId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+                if (!response.ok) {
+                    throw new Error('Error al actualizar el estado');
+                }
+                this.mensaje = 'Estado actualizado con éxito.';
+                this.dialogoActivo = false;
+            } catch (error) {
+                console.error('Error al cambiar el estado de la comanda:', error);
+                this.mensaje = 'Error al cambiar el estado.';
             }
         },
         getDescription(productId) {
@@ -105,14 +176,22 @@ export default {
             const producto = this.productos.find(p => p.product_id === productId);
             return producto ? producto.product_name : 'Nom no disponible';
         },
-        getImageFile(productId) {
+        getImageSrc(productId) {
             const producto = this.productos.find(p => p.product_id === productId);
-            return producto ? producto.image_file : 'imagen_no_disponible.jpg';
+            return producto
+                ? `${this.urlBase}/sources/Imatges/${producto.image_file}`
+                : `${this.urlBase}/sources/Imatges/imagen_no_disponible.jpg`;
         },
         dialogoComanda(comanda) {
             this.comandaSeleccionada = comanda;
             this.productoSeleccionado = this.productos.find(producto => producto.product_id === comanda.product_id) || {};
+            this.nuevoEstado = comanda.status;
             this.dialogoActivo = true;
+        }
+    },
+    beforeUnmount() {
+        if (this.socket) {
+            this.socket.disconnect();
         }
     }
 };
