@@ -172,7 +172,6 @@ app.put("/updateUsuari", (req, res) => {
 });
 
 /*<-------------------------------------- Productes ---------------------------------------->*/
-//e
 app.get("/getProductes", (req, res) => {
   if (req.query.product_id) {
     const idProducte = Number(req.query.product_id);
@@ -420,59 +419,162 @@ app.delete("/deleteComanda", (req, res) => {
   });
 });
 
-const cambioEstado = (order_id, status) => {
-  console.log(`Emitiendo cambio de estado: order_id=${order_id}, status=${status}`);
-  io.emit('cambioEstado', { order_id, status });
+app.put("/waiting", (req, res) => {
+  const order_id = req.query.order_id
+
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error getting connection from pool:', err);
+      res.status(500).send("Error al obtenir connexió");
+      return;
+    }
+
+    const query = `UPDATE Orders SET status = 'waiting' WHERE order_id = ?`;
   
-  const comanda = comandes.find(c => c.order_id === Number(order_id));
-  if (comanda) {
-    comanda.status = status;
-    console.log(`L'ordre: ${order_id} està '${status}'!`);
-  }
-};
-
-const handleStateChange = (status) => {
-  return (req, res) => {
-    const order_id = req.query.order_id;
-    
-    const sendResponse = (statusCode, message) => {
-      if (!res.headersSent) {
-        res.status(statusCode).send(message);
-      }
-    };
-
-    pool.getConnection((err, connection) => {
+    connection.query(query, [order_id], (err, results) => {
       if (err) {
-        console.error('Error getting connection from pool:', err);
-        return sendResponse(500, "Error al obtenir connexió");
+        console.error('Error:', err);
+        res.status(500).send("Error en actualitzar l'ordre");
+      } else {
+        getComandes(connection);
+        res.send("Ordre actualitzada a 'waiting'!");
+        console.log(`L'ordre: ${order_id} està 'waiting'!`)
       }
+      connection.release();
+    }); 
+  });
+});
 
-      const query = `UPDATE Orders SET status = ? WHERE order_id = ?`;
+app.put("/pending", (req, res) => {
+  const order_id = req.query.order_id
+  
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error getting connection from pool:', err);
+      res.status(500).send("Error al obtenir connexió");
+      return;
+    }
 
-      connection.query(query, [status, order_id], (err, results) => {
-        connection.release();
+    const query = `UPDATE Orders SET status = 'pending' WHERE order_id = ?`;
+  
+    connection.query(query, [order_id], (err, results) => {
+      if (err) {
+        console.error('Error:', err);
+        res.status(500).send("Error en actualitzar l'ordre");
+      } else {
+        getComandes(connection);
+        res.send("Ordre actualitzada a 'pending'!");
+        console.log(`L'ordre: ${order_id} està 'pending'!`)
+      }
+      connection.release();
+    }); 
+  });
+});
 
-        if (err) {
-          console.error('Error:', err);
-          return sendResponse(500, `Error en actualitzar l'ordre a '${status}'`);
-        }
+app.put("/shipped", (req, res) => {
+  const order_id = req.query.order_id
+  
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error getting connection from pool:', err);
+      res.status(500).send("Error al obtenir connexió");
+      return;
+    }
 
-        cambioEstado(order_id, status);
-        console.log(`L'ordre: ${order_id} està '${status}'!`);
+    const query = `UPDATE Orders SET status = 'shipped' WHERE order_id = ?`;
+  
+    connection.query(query, [order_id], (err, results) => {
+      if (err) {
+        console.error('Error:', err);
+        res.status(500).send("Error en actualitzar l'ordre");
+      } else {
+        getComandes(connection);
+        res.send("Ordre actualitzada a 'shipped'!");
+        console.log(`L'ordre: ${order_id} ha estat enviada`)
+      }
+      connection.release();
+    }); 
+  });
+});
 
-        sendResponse(200, `Ordre actualitzada a '${status}'!`);
-      });
-    });
-  };
-};
+app.put("/verified", (req, res) => {
+  const order_id = req.query.order_id
+  
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error getting connection from pool:', err);
+      res.status(500).send("Error al obtenir connexió");
+      return;
+    }
 
+    const query = `UPDATE Orders SET status = 'verified' WHERE order_id = ?`;
+  
+    connection.query(query, [order_id], (err, results) => {
+      if (err) {
+        console.error('Error:', err);
+        res.status(500).send("Error en actualitzar l'ordre");
+      } else {
+        getComandes(connection);
+        res.send("Ordre actualitzada a 'verified'!");
+        console.log(`L'ordre: ${order_id} ha estat verificada`)
+      }
+      connection.release();
+    }); 
+  });
+});
 
-app.put("/waiting", handleStateChange('waiting'));
-app.put("/pending", handleStateChange('pending'));
-app.put("/shipped", handleStateChange('shipped'));
-app.put("/verified", handleStateChange('verified'));
-app.put("/confirmed", handleStateChange('confirmed'));
-app.put("/canceled", handleStateChange('canceled'));
+app.put("/confirmed", (req, res) => {
+  const order_id = req.query.order_id
+  
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error getting connection from pool:', err);
+      res.status(500).send("Error al obtenir connexió");
+      return;
+    }
+
+    const query = `UPDATE Orders SET status = 'confirmed' WHERE order_id = ?`;
+  
+    connection.query(query, [order_id], (err, results) => {
+      if (err) {
+        console.error('Error:', err);
+        res.status(500).send("Error en actualitzar l'ordre");
+      } else {
+        getComandes(connection);
+        res.send("Ordre actualitzada a 'confirmed'!");
+        console.log(`L'ordre: ${order_id} ha estat confirmada`)
+      }
+      connection.release();
+    }); 
+  });
+});
+
+app.put("/canceled", (req, res) => {
+  const order_id = req.query.order_id
+  
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error getting connection from pool:', err);
+      res.status(500).send("Error al obtenir connexió");
+      return;
+    }
+
+    const query = `UPDATE Orders SET status = 'canceled' WHERE order_id = ?`;
+  
+    connection.query(query, [order_id], (err, results) => {
+      if (err) {
+        console.error('Error:', err);
+        res.status(500).send("Error en actualitzar l'ordre");
+      } else {
+        esborrarComanda(connection, order_id)
+        getComandes(connection);
+        res.send("Ordre actualitzada a 'canceled'!");
+        console.log(`L'ordre: ${order_id} ha estat cancelada`)
+      }
+      connection.release();
+    }); 
+  });
+});
 
 /*<-------------------------------------- Inici App ---------------------------------------->*/
 
