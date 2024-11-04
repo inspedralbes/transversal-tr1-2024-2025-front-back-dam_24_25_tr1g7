@@ -394,6 +394,32 @@ app.delete("/deleteComanda", (req, res) => {
   });
 });
 
+app.put("/waiting", (req, res) => {
+  const order_id = req.query.order_id
+
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error getting connection from pool:', err);
+      res.status(500).send("Error al obtenir connexió");
+      return;
+    }
+
+    const query = `UPDATE Orders SET status = 'waiting' WHERE order_id = ?`;
+  
+    connection.query(query, [order_id], (err, results) => {
+      if (err) {
+        console.error('Error:', err);
+        res.status(500).send("Error en actualitzar l'ordre");
+      } else {
+        getComandes(connection);
+        res.send("Ordre actualitzada a 'waiting'!");
+        console.log(`L'ordre: ${order_id} està 'waiting'!`)
+      }
+      connection.release();
+    }); 
+  });
+});
+
 app.put("/pending", (req, res) => {
   const order_id = req.query.order_id
   
