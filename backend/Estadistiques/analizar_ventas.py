@@ -6,7 +6,8 @@ import os
 from datetime import datetime, timedelta
 
 # Leer el archivo JSON
-with open('dades_ventas.json', 'r') as f:
+file_path = os.path.join(os.path.dirname(__file__), 'dades_ventas.json')
+with open(file_path, 'r') as f:
     dades = json.load(f)
 
 data = pd.DataFrame(dades)
@@ -15,7 +16,7 @@ data['data'] = pd.to_datetime(data['data'])
 
 data['total_venta'] = data['quantitat'] * data['preu_unitari']
 
-general_output_dir = 'informes'
+general_output_dir = os.path.join(os.path.dirname(__file__), 'informes')
 os.makedirs(general_output_dir, exist_ok=True)
 
 
@@ -73,4 +74,4 @@ plt.tight_layout()
 plt.savefig(os.path.join(monthly_output_dir, 'vendes_totals_mensuals.png'))
 plt.close()
 
-print("Gráficos generados: diarios guardados por día, gráfico semanal y gráfico mensual en sus carpetas respectivas.")
+print("Gràfics generats!")
