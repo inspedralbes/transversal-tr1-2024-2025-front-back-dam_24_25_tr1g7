@@ -244,33 +244,37 @@ app.post("/createProducte", (req, res) => {
     stock: req.body.stock,
     string_imatge: req.body.string_imatge
   };
-
   const image_file = `${nouProducte.product_name}.png`;
   const filePath = `${process.cwd()}/sources/Imatges/${image_file}`;
 
   pool.getConnection((err, connection) => {
     if (err) {
       console.error('Error getting connection from pool:', err);
-      res.status(500).send("Error al obtenir connexió");
-      return;
+      return res.status(500).send("Error al obtenir connexió");
     }
 
-
     const query = `INSERT INTO Products (product_name, description, material, price, stock, image_file) VALUES (?, ?, ?, ?, ?, ?)`;
-
     connection.query(query, [nouProducte.product_name, nouProducte.description, nouProducte.material, nouProducte.price, nouProducte.stock, image_file], (err, results) => {
       if (err) {
         console.error('Error:', err);
         res.status(500).send("Error en crear el producte");
       } else {
-        if (nouProducte.string_imatge != undefined && nouProducte.string_imatge != "") {
+        if (nouProducte.string_imatge != undefined && nouProducte.string_imatge != ""){
           const base64Image = nouProducte.string_imatge.split(';base64,').pop();
-          fs.writeFile(filePath, base64Image, { encoding: 'base64' }, function (err) {
+          fs.writeFile(filePath, base64Image, { encoding: 'base64' }, function(err) {
             if (err) {
               console.error('Error en afegir la imatge:', err);
               return res.status(500).send("Error en afegir la imatge");
             }
             console.log('Imatge afegida');
+            
+            // Añadir el ID del producto recién creado
+            nouProducte.product_id = results.insertId;
+            nouProducte.image_file = image_file;
+
+            // Emitir el nuevo producto a todos los clientes conectados
+            io.emit('nuevoProducto', nouProducte);
+
             getProductes(connection);
             res.send("Producte afegit!");
             console.log(`Producte: ${nouProducte.product_name} afegit correctament!`);
@@ -286,6 +290,7 @@ app.post("/createProducte", (req, res) => {
             console.log('Imatge afegida');
             getProductes(connection);
             res.send("Producte afegit!");
+            io.emit('nuevoProducto', nouProducte);
             console.log(`Producte: ${nouProducte.product_name} afegit correctament!`);
           });
         }
@@ -301,26 +306,16 @@ app.delete("/deleteProducte", (req, res) => {
   pool.getConnection((err, connection) => {
     if (err) {
       console.error('Error getting connection from pool:', err);
-      res.status(500).send("Error al obtenir connexió");
-      return;
+      return res.status(500).send("Error al obtenir connexió");
     }
-
     const query = `DELETE FROM Products WHERE product_id=?;`;
-
     connection.query(query, [idProducteEliminar], (err, results) => {
       if (err) {
         console.error('Error:', err);
         res.status(500).send("Error en eliminar el producte");
       } else {
-        var producteEliminar = {};
-        for (const producte of productes) {
-          if (producte.product_id = idProducteEliminar) {
-            producteEliminar = producte
-          }
-        }
-        var filePath = `${process.cwd()}/sources/Imatges/${producteEliminar.image_file}`;
-        fs.unlinkSync(filePath);
         getProductes(connection);
+        io.emit('productoEliminado', idProducteEliminar);
         res.send("Producte eliminat!");
         console.log(`Producte amb id: ${idProducteEliminar} eliminat correctament!`)
       }

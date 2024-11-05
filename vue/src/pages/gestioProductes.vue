@@ -9,7 +9,8 @@
             <v-card class="mt-2">
               <v-card-title class="text-center">{{ producto.product_name }}</v-card-title>
               <v-card-subtitle class="text-center">{{ producto.description }}</v-card-subtitle>
-              <v-img :src="`http://dam.inspedralbes.cat:21345/sources/Imatges/${producto.image_file}`" height="350px" class="my-4" />
+              <v-img :src="`http://dam.inspedralbes.cat:21345/sources/Imatges/${producto.image_file}`" height="350px"
+                class="my-4" />
               <v-card-actions class="d-flex justify-center">
                 <v-btn icon @click="editarProducto(producto)">
                   <v-icon color="blue">mdi-pencil</v-icon>
@@ -47,29 +48,49 @@
 
 <script>
 import Header from '@/components/Header.vue';
+import { io } from 'socket.io-client';
 
 export default {
   data() {
     return {
       productos: [],
-      productoEditado: null, // Producte que s'està editant
-      dialogoEditarActivo: false, // Controla la visibilitat del diàleg d'edició
-      url: 'http://dam.inspedralbes.cat:21345/getProductes' // URL de l'API
+      productoEditado: null,
+      dialogoEditarActivo: false,
+      urlBase: 'http://localhost:21345',
+      urlProductos: 'http://localhost:21345/getProductes',
+      socket: null
     };
   },
   mounted() {
     this.obtenerProductos();
+    this.conectarSocket();
   },
   methods: {
+    conectarSocket() {
+      this.socket = io(this.urlBase);
+      this.socket.on('connect', () => {
+        console.log('Conectado al servidor Socket.IO');
+      });
+      this.socket.on('nuevoProducto', this.agregarNuevoProducto);
+      this.socket.on('productoEliminado', this.eliminarProductoLocal);
+    },
+    agregarNuevoProducto(producto) {
+      console.log('Nuevo producto recibido:', producto);
+      // Añadir el nuevo producto a la lista de productos
+      this.productos.push(producto);
+    },
+    eliminarProductoLocal(productId) {
+      this.productos = this.productos.filter(p => p.product_id !== parseInt(productId));
+    },
     async obtenerProductos() {
       try {
-        const response = await fetch(this.url);
+        const response = await fetch(this.urlProductos);
         if (!response.ok) {
-          throw new Error('Error en la resposta de la xarxa');
+          throw new Error('Error en la respuesta de la red');
         }
         this.productos = await response.json();
       } catch (error) {
-        console.error('Error en obtenir productes:', error);
+        console.error('Error al obtener productos:', error);
       }
     },
     editarProducto(producto) {
@@ -110,16 +131,16 @@ export default {
       }
     },
     async eliminarProducto(id) {
-      if (confirm('Estàs segur d’eliminar aquest producte?')) {
+      if (confirm('Estàs segur d´eliminar aquest producte?')) {
         try {
-          const response = await fetch(`http://dam.inspedralbes.cat:21345/deleteProducte?product_id=${id}`, {
+          const response = await fetch(`${this.urlBase}/deleteProducte?product_id=${id}`, {
             method: 'DELETE'
           });
           if (!response.ok) {
             throw new Error('Error en eliminar el producte');
           }
-
-          this.productos = this.productos.filter(p => p.product_id !== id);
+          // Ya no necesitamos eliminar el producto localmente aquí,
+          // ya que lo haremos cuando recibamos el evento de socket
           alert('Producte eliminat amb èxit');
         } catch (error) {
           console.error('Error en eliminar el producte:', error);
