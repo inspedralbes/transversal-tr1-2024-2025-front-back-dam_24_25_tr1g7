@@ -86,14 +86,21 @@ export default {
     },
     mounted() {
         this.conectarSocket();
-        this.obtenerComandes();
         this.obtenerProductos();
+        this.obtenerComandes();
     },
     methods: {
         conectarSocket() {
             this.socket = io(this.urlBase);
+            this.socket.on('connect', () => {
+                console.log('Conectado al servidor Socket.IO');
+            });
             this.socket.on('cambioEstado', this.actualizarEstadoComanda);
-            this.socket.on('nuevaComanda', this.agregarNuevaComanda);
+            this.socket.on('eliminarComanda', this.eliminarComanda);
+        },
+        eliminarComanda(order_id) {
+            this.comandes = this.comandes.filter(c => c.order_id !== parseInt(order_id));
+            this.obtenerProductos();
         },
         actualizarEstadoComanda({ order_id, status }) {
             console.log(`Recibido cambio de estado: order_id=${order_id}, status=${status}`);
