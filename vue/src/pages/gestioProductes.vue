@@ -73,14 +73,21 @@ export default {
       });
       this.socket.on('nuevoProducto', this.agregarNuevoProducto);
       this.socket.on('productoEliminado', this.eliminarProductoLocal);
+      this.socket.on('stockActualizado', this.actualizarStockProducto);
     },
     agregarNuevoProducto(producto) {
       console.log('Nuevo producto recibido:', producto);
-      // Añadir el nuevo producto a la lista de productos
       this.productos.push(producto);
     },
     eliminarProductoLocal(productId) {
       this.productos = this.productos.filter(p => p.product_id !== parseInt(productId));
+    },
+    actualizarStockProducto({ product_id, stock }) {
+      console.log('Stock actualizado:', product_id, stock);
+      const producto = this.productos.find(p => p.product_id === product_id);
+      if (producto) {
+        producto.stock = stock;
+      }
     },
     async obtenerProductos() {
       try {
@@ -112,7 +119,7 @@ export default {
           stock: this.productoEditado.stock
         });
 
-        const response = await fetch(`http://dam.inspedralbes.cat:21345/updateProducte?${params.toString()}`, {
+        const response = await fetch(`${this.urlBase}/updateProducte?${params.toString()}`, {
           method: 'PUT',
         });
 
@@ -146,6 +153,11 @@ export default {
           console.error('Error en eliminar el producte:', error);
         }
       }
+    }
+  },
+  beforeUnmount() {
+    if (this.socket) {
+      this.socket.disconnect();
     }
   }
 };

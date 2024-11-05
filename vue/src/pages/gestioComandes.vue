@@ -97,6 +97,14 @@ export default {
             });
             this.socket.on('cambioEstado', this.actualizarEstadoComanda);
             this.socket.on('eliminarComanda', this.eliminarComanda);
+            this.socket.on('stockActualizado', this.actualizarStockProducto);
+        },
+
+        actualizarStockProducto({ product_id, newStock }) {
+            const producto = this.productos.find(p => p.product_id === product_id);
+            if (producto) {
+                producto.stock = newStock;
+            }
         },
         eliminarComanda(order_id) {
             this.comandes = this.comandes.filter(c => c.order_id !== parseInt(order_id));
@@ -169,6 +177,8 @@ export default {
                     throw new Error('Error al actualizar el estado');
                 }
                 this.mensaje = 'Estado actualizado con éxito.';
+
+                // La actualización del estado y del stock se manejará a través de los eventos de socket
                 this.dialogoActivo = false;
             } catch (error) {
                 console.error('Error al cambiar el estado de la comanda:', error);

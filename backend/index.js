@@ -402,10 +402,11 @@ app.get("/getComandes", (req, res) => {
 
 app.post("/createComanda", (req, res) => {
   const novaComanda = {
-    user_id: req.query.user_id,
-    product_id: req.query.product_id,
-    total: req.query.total,
-    status: 'waiting'
+    user_id: req.body.user_id,
+    product_id: req.body.product_id,
+    quantity: req.body.quantity,
+    total: req.body.total,
+    status: 'pending' // O el estado inicial que prefieras
   };
 
   pool.getConnection((err, connection) => {
@@ -414,23 +415,52 @@ app.post("/createComanda", (req, res) => {
       return res.status(500).send("Error al obtenir connexió");
     }
 
-    const query = `INSERT INTO Orders (user_id, product_id, total, status) VALUES (?, ?, ?, ?)`;
-
-    connection.query(query, [novaComanda.user_id, novaComanda.product_id, novaComanda.total, novaComanda.status], (err, results) => {
-      connection.release();
-
+    connection.beginTransaction((err) => {
       if (err) {
-        console.error('Error:', err);
-        return res.status(500).send("Error en crear la comanda");
+        connection.release();
+        return res.status(500).send("Error al iniciar la transacción");
       }
 
-      novaComanda.order_id = results.insertId;
-      comandes.push(novaComanda);
+      // Insertar la nueva comanda
+      const queryComanda = `INSERT INTO Orders (user_id, product_id, quantity, total, status) VALUES (?, ?, ?, ?, ?)`;
+      connection.query(queryComanda, [novaComanda.user_id, novaComanda.product_id, novaComanda.quantity, novaComanda.total, novaComanda.status], (err, results) => {
+        if (err) {
+          return connection.rollback(() => {
+            connection.release();
+            res.status(500).send("Error en crear la comanda");
+          });
+        }
 
-      io.emit('nuevaComanda', novaComanda);
+        // Actualizar el stock del producto
+        const queryUpdateStock = `UPDATE Products SET stock = stock - ? WHERE product_id = ?`;
+        connection.query(queryUpdateStock, [novaComanda.quantity, novaComanda.product_id], (err, updateResults) => {
+          if (err) {
+            return connection.rollback(() => {
+              connection.release();
+              res.status(500).send("Error en actualitzar l'estoc");
+            });
+          }
 
-      res.send("Comanda afegida!");
-      console.log(`Comanda de: ${novaComanda.user_id} afegida correctament!`);
+          connection.commit((err) => {
+            if (err) {
+              return connection.rollback(() => {
+                connection.release();
+                res.status(500).send("Error en finalitzar la transacció");
+              });
+            }
+
+            // Emitir evento de socket para la nueva comanda y actualización de stock
+            io.emit('nuevaComanda', { ...novaComanda, order_id: results.insertId });
+            io.emit('stockActualizado', { product_id: novaComanda.product_id, newStock: updateResults.affectedRows });
+
+            getComandes(connection);
+            getProductes(connection);
+            res.send("Comanda afegida i estoc actualitzat!");
+            console.log(`Comanda afegida i estoc actualitzat per al producte: ${novaComanda.product_id}`);
+            connection.release();
+          });
+        });
+      });
     });
   });
 });
@@ -514,12 +544,86 @@ const ChangeStatus = (status) => {
   };
 };
 
-
 app.put("/waiting", ChangeStatus('waiting'));
 app.put("/pending", ChangeStatus('pending'));
 app.put("/shipped", ChangeStatus('shipped'));
 app.put("/verified", ChangeStatus('verified'));
-app.put("/confirmed", ChangeStatus('confirmed'));
+
+app.put("/confirmed", (req, res) => {
+  const order_id = req.query.order_id;
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error getting connection from pool:', err);
+      return res.status(500).send("Error al obtener conexión");
+    }
+
+    connection.beginTransaction((err) => {
+      if (err) {
+        connection.release();
+        return res.status(500).send("Error al iniciar la transacción");
+      }
+
+      // Obtener la información de la comanda
+      const queryGetOrder = `SELECT product_id FROM Orders WHERE order_id = ?`;
+      connection.query(queryGetOrder, [order_id], (err, orderResults) => {
+        if (err) {
+          return connection.rollback(() => {
+            connection.release();
+            res.status(500).send("Error al obtener la información de la comanda");
+          });
+        }
+
+        if (orderResults.length === 0) {
+          return connection.rollback(() => {
+            connection.release();
+            res.status(404).send("Comanda no encontrada");
+          });
+        }
+
+        const { product_id } = orderResults[0];
+
+        // Actualizar el estado de la comanda
+        const queryUpdateOrder = `UPDATE Orders SET status = 'confirmed' WHERE order_id = ?`;
+        connection.query(queryUpdateOrder, [order_id], (err, updateResults) => {
+          if (err) {
+            return connection.rollback(() => {
+              connection.release();
+              res.status(500).send("Error al actualizar el estado de la comanda");
+            });
+          }
+
+          // Actualizar el stock del producto
+          const queryUpdateStock = `UPDATE Products SET stock = stock - 1 WHERE product_id = ?`;
+          connection.query(queryUpdateStock, [product_id], (err, stockResults) => {
+            if (err) {
+              return connection.rollback(() => {
+                connection.release();
+                res.status(500).send("Error al actualizar el stock del producto");
+              });
+            }
+
+            connection.commit((err) => {
+              if (err) {
+                return connection.rollback(() => {
+                  connection.release();
+                  res.status(500).send("Error al finalizar la transacción");
+                });
+              }
+
+              // Emitir eventos de socket para notificar cambios
+              io.emit('cambioEstado', { order_id, status: 'confirmed' });
+              io.emit('stockActualizado', { product_id });
+
+              res.send("Comanda confirmada y stock actualizado");
+              console.log(`Comanda ${order_id} confirmada y stock actualizado para el producto ${product_id}`);
+              connection.release();
+            });
+          });
+        });
+      });
+    });
+  });
+});
 
 app.put("/canceled", (req, res) => {
   const order_id = req.query.order_id;
