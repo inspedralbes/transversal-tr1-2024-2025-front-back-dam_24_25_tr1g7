@@ -1,60 +1,14 @@
 <template>
-  <v-app>
-    <Header />
+    <NavigationDrawer /> 
 
-    <v-main>
-      <v-container class="mt-10">
-        <v-row>
-          <v-col cols="12" md="6" v-for="producto in productosFiltrados" :key="producto.product_id">
-            <v-card class="mt-2 d-flex flex-row" @click="dialogoProducto(producto)">
-              <div style="flex-basis: 50%;" class="d-flex flex-column justify-center">
-                <v-card-title class="text-center">{{ producto.product_name }}</v-card-title>
-                <v-card-subtitle class="description text-center"
-                  style="display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden;">
-                  {{ producto.description }}
-                </v-card-subtitle>
-                <v-card-actions class="d-flex justify-center">
-                  <v-btn icon @click.stop="aceptarProducto(producto.product_id)">
-                    <v-icon color="green">mdi-check-circle</v-icon>
-                  </v-btn>
-                  <v-btn icon @click.stop="rechazarProducto(producto.product_id)">
-                    <v-icon color="red">mdi-close-circle</v-icon>
-                  </v-btn>
-                </v-card-actions>
-              </div>
-              <v-img :src="`http://dam.inspedralbes.cat:21345/sources/Imatges/${producto.image_file}`" height="350px"
-                width="50%" class="my-4" />
-            </v-card>
-          </v-col>
-        </v-row>
-      </v-container>
-
-      <v-dialog v-model="dialogoActivo" max-width="600px">
-        <v-card>
-          <v-btn icon @click="dialogoActivo = false" class="ml-auto mt-2 mr-2">
-            <v-icon color="grey">mdi-close</v-icon>
-          </v-btn>
-          <v-img
-            :src="productoSeleccionado.image_file ? `http://dam.inspedralbes.cat:21345/sources/Imatges/${productoSeleccionado.image_file}` : ''"
-            height="350px" width="50%" class="my-4 mx-auto" />
-          <v-card-title class="text-center">{{ productoSeleccionado.product_name }}</v-card-title>
-          <v-card-text class="text-center">
-            {{ productoSeleccionado.description }}
-          </v-card-text>
-          <v-card-text class="text-center">
-            <p><strong>Status:</strong> {{ ordenSeleccionada ? ordenSeleccionada.status : 'No asignado' }}</p>
-            <p><strong>Total:</strong> {{ ordenSeleccionada ? ordenSeleccionada.total : 'No asignado' }}</p>
-          </v-card-text>
-        </v-card>
-      </v-dialog>
-    </v-main>
-  </v-app>
 </template>
 
 <script>
 import { io } from 'socket.io-client';
+import NavigationDrawer from '@/components/NavigationDrawer.vue';
 
 export default {
+  
   data() {
     return {
       productos: [],
@@ -69,6 +23,18 @@ export default {
     };
   },
   computed: {
+    TitutoPagina() {
+      switch (this.$route.path) {
+        case '/gestioComandes':
+          return 'Gestió de Comandes';
+        case '/gestioProductes':
+          return 'Gestió de Productes';
+        case '/veureEstadistiques':
+          return 'Estadístiques';
+        default:
+          return '';
+      }
+    },
     productosFiltrados() {
       const productVerified = this.comandes
         .filter(comanda => comanda.status === 'verified')
@@ -90,24 +56,16 @@ export default {
       this.socket.on('cambioEstado', this.actualizarEstadoComanda);
     },
     actualizarEstadoComanda({ order_id, status }) {
-      console.log(`Recibido cambio de estado: order_id=${order_id}, status=${status}`);
       const comanda = this.comandes.find(c => c.order_id === parseInt(order_id));
       if (comanda) {
         comanda.status = status;
-        console.log("aaaaaaaaaaaaaaaa", comanda);
-        
         if (status !== 'verified') {
           this.comandes = this.comandes.filter(c => c.order_id !== parseInt(order_id));
-          console.log("bbbbbbbbbbbbbbbb", this.comandes);
-          
         }
       } else if (status === 'verified') {
-        console.log("cccccccccccccccc", order_id);
-        
         this.obtenerNuevaComanda(order_id);
       }
     },
-
     async obtenerNuevaComanda(order_id) {
       try {
         const response = await fetch(`${this.urlBase}/getComandes?order_id=${order_id}`);
@@ -135,10 +93,22 @@ export default {
         const response = await fetch(this.urlComandes);
         if (!response.ok) throw new Error('Error en la respuesta de la red');
         this.comandes = await response.json();
-        console.log('Comandes obtenidas:', this.comandes);
       } catch (error) {
         console.error('Error al obtener comandes:', error);
       }
+    },
+    getProductImage(producto) {
+      return producto.image_file
+        ? `http://dam.inspedralbes.cat:21345/sources/Imatges/${producto.image_file}`
+        : `${this.urlBase}/sources/Imatges/imagen_no_disponible.jpg`;
+    },
+    getOrderStatus(product_id) {
+      const orden = this.comandes.find(comanda => comanda.product_id === product_id);
+      return orden ? orden.status : 'No asignado';
+    },
+    getOrderTotal(product_id) {
+      const orden = this.comandes.find(comanda => comanda.product_id === product_id);
+      return orden ? `${orden.total} €` : 'No asignado';
     },
     async aceptarProducto(id) {
       const producto = this.comandes.find(c => c.product_id === id);
@@ -167,16 +137,6 @@ export default {
           alert('Error al rechazar producto.');
         }
       }
-    },
-    dialogoProducto(producto) {
-      if (producto) {
-        console.log("Producto seleccionado:", producto);
-        this.productoSeleccionado = producto;
-        this.ordenSeleccionada = this.comandes.find(comanda => comanda.product_id === producto.product_id) || null;
-        this.dialogoActivo = true;
-      } else {
-        console.error("Producto no encontrado");
-      }
     }
   },
   beforeUnmount() {
@@ -184,12 +144,12 @@ export default {
       this.socket.disconnect();
     }
   }
-}
+};
 </script>
 
 <style scoped>
-.description {
-  max-width: 100%;
-  white-space: normal;
+.v-card {
+  border-radius: 8px;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
 }
 </style>
