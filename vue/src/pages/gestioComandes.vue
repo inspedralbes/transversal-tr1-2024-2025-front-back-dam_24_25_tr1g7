@@ -72,9 +72,9 @@ export default {
             productoSeleccionado: {},
             nuevoEstado: '',
             estados: ['waiting', 'pending', 'shipped', 'verified', 'confirmed', 'canceled'],
-            urlBase: 'http://localhost:21345',
-            urlComandes: 'http://localhost:21345/getComandes',
-            urlProductos: 'http://localhost:21345/getProductes',
+            urlBase: 'http://tr1g7.dam.inspedralbes.cat:21345',
+            urlComandes: 'http://tr1g7.dam.inspedralbes.cat:21345/getComandes',
+            urlProductos: 'http://tr1g7.dam.inspedralbes.cat:21345/getProductes',
             mensaje: '',
             socket: null,
         };
@@ -85,9 +85,9 @@ export default {
         }
     },
     mounted() {
-        this.conectarSocket();
-        this.obtenerProductos();
         this.obtenerComandes();
+        this.obtenerProductos();
+        this.conectarSocket();
     },
     methods: {
         conectarSocket() {
@@ -96,14 +96,13 @@ export default {
                 console.log('Conectado al servidor Socket.IO');
             });
             this.socket.on('cambioEstado', this.actualizarEstadoComanda);
-            this.socket.on('eliminarComanda', this.eliminarComanda);
             this.socket.on('stockActualizado', this.actualizarStockProducto);
         },
-
-        actualizarStockProducto({ product_id, newStock }) {
+        actualizarStockProducto({ product_id, stock }) {
             const producto = this.productos.find(p => p.product_id === product_id);
             if (producto) {
-                producto.stock = newStock;
+                producto.stock = stock;
+                console.log(`Stock actualizado para producto ${product_id}: ${stock}`);
             }
         },
         eliminarComanda(order_id) {
@@ -111,21 +110,21 @@ export default {
             this.obtenerProductos();
         },
         actualizarEstadoComanda({ order_id, status }) {
-            console.log(`Recibido cambio de estado: order_id=${order_id}, status=${status}`);
+            console.log('Actualizando estado de comanda:', order_id, status);
             const comanda = this.comandes.find(c => c.order_id === parseInt(order_id));
             if (comanda) {
-                console.log(`Actualizando comanda: ${JSON.stringify(comanda)}`);
                 comanda.status = status;
+                this.$forceUpdate(); // Forzar a Vue a re-renderizar
             } else {
-                console.log(`No se encontró la comanda con id ${order_id}`);
+                console.warn(`Comanda con id ${order_id} no encontrada`);
+                // Opcionalmente, podrías recargar todas las comandas aquí
+                this.obtenerComandes();
             }
         },
-        agregarNuevaComanda(comanda) {
-            console.log('Nueva comanda recibida:', comanda);
-            if (comanda.status !== 'verified') {
-                this.comandes.push(comanda);
-                this.obtenerDetallesProducto(comanda.product_id);
-            }
+        agregarNuevaComanda(nuevaComanda) {
+            console.log('Nueva comanda recibida:', nuevaComanda);
+            this.comandes.push(nuevaComanda);
+            this.$forceUpdate(); // Forzar a Vue a re-renderizar
         },
         async obtenerDetallesProducto(productId) {
             try {
@@ -148,9 +147,9 @@ export default {
                     throw new Error('Error en la respuesta de la red');
                 }
                 this.comandes = await response.json();
+                console.log('Comandes obtenidas:', this.comandes);
             } catch (error) {
-                console.error('Error al obtener comandas:', error);
-                this.mensaje = 'Error al obtener comandas.';
+                console.error('Error al obtener comandes:', error);
             }
         },
         async obtenerProductos() {
@@ -165,24 +164,24 @@ export default {
                 this.mensaje = 'Error al obtener productos.';
             }
         },
-        async cambiarEstado(orderId, nuevoEstado) {
+        async cambiarEstado(order_id, nuevoEstado) {
             try {
-                const response = await fetch(`${this.urlBase}/${nuevoEstado}?order_id=${orderId}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                console.log(`Cambiando estado de la comanda ${order_id} a ${nuevoEstado}`);
+                const response = await fetch(`${this.urlBase}/confirmed?order_id=${order_id}`, {
+                    method: 'PUT'
                 });
                 if (!response.ok) {
-                    throw new Error('Error al actualizar el estado');
+                    const errorText = await response.text();
+                    throw new Error(errorText || 'Error al actualizar el estado');
                 }
-                this.mensaje = 'Estado actualizado con éxito.';
+                const data = await response.json();
+                console.log(`Respuesta del servidor:`, data);
 
-                // La actualización del estado y del stock se manejará a través de los eventos de socket
+                // La actualización local se maneja en el método actualizarEstadoComanda
                 this.dialogoActivo = false;
             } catch (error) {
                 console.error('Error al cambiar el estado de la comanda:', error);
-                this.mensaje = 'Error al cambiar el estado.';
+                alert(`Error al cambiar el estado: ${error.message}`);
             }
         },
         getDescription(productId) {

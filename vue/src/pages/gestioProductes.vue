@@ -9,6 +9,9 @@
             <v-card class="mt-2">
               <v-card-title class="text-center">{{ producto.product_name }}</v-card-title>
               <v-card-subtitle class="text-center">{{ producto.description }}</v-card-subtitle>
+              <v-card-text class="text-center">
+                <strong>Stock:</strong> {{ producto.stock }}
+              </v-card-text>
               <v-img :src="`http://dam.inspedralbes.cat:21345/sources/Imatges/${producto.image_file}`" height="350px"
                 class="my-4" />
               <v-card-actions class="d-flex justify-center">
@@ -23,21 +26,20 @@
           </v-col>
         </v-row>
 
-        <!-- Diálogo per editar producte -->
         <v-dialog v-model="dialogoEditarActivo" max-width="600px">
-          <v-card>
+          <v-card v-if="productoEditado">
             <v-card-title class="text-center">Editar Producte</v-card-title>
             <v-card-text>
               <v-text-field v-model="productoEditado.product_name" label="Nom del Producte"></v-text-field>
               <v-textarea v-model="productoEditado.description" label="Descripció"></v-textarea>
               <v-text-field v-model="productoEditado.material" label="Material"></v-text-field>
-              <v-text-field v-model="productoEditado.price" label="Preu" type="number"></v-text-field>
-              <v-text-field v-model="productoEditado.stock" label="Estoc" type="number"></v-text-field>
+              <v-text-field v-model.number="productoEditado.price" label="Preu" type="number"></v-text-field>
+              <v-text-field v-model.number="productoEditado.stock" label="Estoc" type="number"></v-text-field>
             </v-card-text>
             <v-card-actions>
               <v-spacer></v-spacer>
               <v-btn color="primary" @click="guardarCambios">Guardar</v-btn>
-              <v-btn color="secondary" @click="dialogoEditarActivo = false">Cancel·lar</v-btn>
+              <v-btn color="secondary" @click="cerrarDialogoEditar">Cancel·lar</v-btn>
             </v-card-actions>
           </v-card>
         </v-dialog>
@@ -51,13 +53,16 @@ import Header from '@/components/Header.vue';
 import { io } from 'socket.io-client';
 
 export default {
+  components: {
+    Header
+  },
   data() {
     return {
       productos: [],
       productoEditado: null,
       dialogoEditarActivo: false,
-      urlBase: 'http://localhost:21345',
-      urlProductos: 'http://localhost:21345/getProductes',
+      urlBase: 'http://tr1g7.dam.inspedralbes.cat:21345',
+      urlProductos: 'http://tr1g7.dam.inspedralbes.cat:21345/getProductes',
       socket: null
     };
   },
@@ -71,23 +76,30 @@ export default {
       this.socket.on('connect', () => {
         console.log('Conectado al servidor Socket.IO');
       });
+      this.socket.on('stockActualizado', this.manejarActualizacionStock);
       this.socket.on('nuevoProducto', this.agregarNuevoProducto);
       this.socket.on('productoEliminado', this.eliminarProductoLocal);
-      this.socket.on('stockActualizado', this.actualizarStockProducto);
+    },
+    manejarActualizacionStock({ product_id, stock }) {
+      console.log('Stock actualizado:', product_id, stock);
+      const producto = this.productos.find(p => p.product_id === parseInt(product_id));
+      if (producto) {
+        producto.stock = parseInt(stock);
+        this.$forceUpdate(); // Force Vue to re-render
+      } else {
+        console.warn(`Producto con id ${product_id} no encontrado`);
+        // Opcionalmente, podrías recargar todos los productos aquí
+        this.obtenerProductos();
+      }
     },
     agregarNuevoProducto(producto) {
       console.log('Nuevo producto recibido:', producto);
       this.productos.push(producto);
+      this.$forceUpdate(); // Force Vue to re-render
     },
     eliminarProductoLocal(productId) {
       this.productos = this.productos.filter(p => p.product_id !== parseInt(productId));
-    },
-    actualizarStockProducto({ product_id, stock }) {
-      console.log('Stock actualizado:', product_id, stock);
-      const producto = this.productos.find(p => p.product_id === product_id);
-      if (producto) {
-        producto.stock = stock;
-      }
+      this.$forceUpdate(); // Force Vue to re-render
     },
     async obtenerProductos() {
       try {
@@ -96,19 +108,22 @@ export default {
           throw new Error('Error en la respuesta de la red');
         }
         this.productos = await response.json();
+        console.log('Productos obtenidos:', this.productos);
       } catch (error) {
         console.error('Error al obtener productos:', error);
       }
     },
     editarProducto(producto) {
-      this.productoEditado = { ...producto }; // Clonar el producte seleccionat
+      this.productoEditado = JSON.parse(JSON.stringify(producto));
+      console.log('Producto a editar:', this.productoEditado);
       this.dialogoEditarActivo = true;
     },
     async guardarCambios() {
-      if (!this.productoEditado.product_id) {
+      if (!this.productoEditado || !this.productoEditado.product_id) {
         alert('No es pot actualitzar, ID no trobat.');
         return;
       }
+      console.log('Producto a guardar:', this.productoEditado);
       try {
         const params = new URLSearchParams({
           product_id: this.productoEditado.product_id,
@@ -124,17 +139,26 @@ export default {
         });
 
         if (!response.ok) {
-          throw new Error('Error en actualitzar el producte');
+          const errorText = await response.text();
+          throw new Error(`Error en actualitzar el producte: ${errorText}`);
         }
+
+        const updatedProduct = await response.json();
+        console.log('Respuesta del servidor:', updatedProduct);
 
         const index = this.productos.findIndex(p => p.product_id === this.productoEditado.product_id);
         if (index !== -1) {
-          this.productos.splice(index, 1, this.productoEditado); // Actualitzar el producte a la llista
+          this.productos.splice(index, 1, updatedProduct);
+        } else {
+          console.warn('Producto no encontrado en la lista local');
         }
-        this.dialogoEditarActivo = false;
+
+        this.$forceUpdate();
+        this.cerrarDialogoEditar();
         alert('Producte actualitzat amb èxit');
       } catch (error) {
         console.error('Error al actualitzar producte:', error);
+        alert(`Error al actualitzar producte: ${error.message}`);
       }
     },
     async eliminarProducto(id) {
@@ -146,13 +170,16 @@ export default {
           if (!response.ok) {
             throw new Error('Error en eliminar el producte');
           }
-          // Ya no necesitamos eliminar el producto localmente aquí,
-          // ya que lo haremos cuando recibamos el evento de socket
           alert('Producte eliminat amb èxit');
         } catch (error) {
           console.error('Error en eliminar el producte:', error);
+          alert(`Error en eliminar el producte: ${error.message}`);
         }
       }
+    },
+    cerrarDialogoEditar() {
+      this.dialogoEditarActivo = false;
+      this.productoEditado = null;
     }
   },
   beforeUnmount() {
