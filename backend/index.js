@@ -334,7 +334,9 @@ app.delete("/deleteProducte", (req, res) => {
           }
         }
         var filePath = `${process.cwd()}/sources/Imatges/${producteEliminar.image_file}`;
-        fs.unlinkSync(filePath);
+        if (filePath){
+          fs.unlinkSync(filePath);
+        }
         getProductes(connection);
         res.send("Producte eliminat!");
         console.log(`Producte amb id: ${idProducteEliminar} eliminat correctament!`)
@@ -449,8 +451,27 @@ app.post("/createComanda", (req, res) => {
 
       io.emit('nuevaComanda', novaComanda);
 
+      const d = new Date();
+      const avui = d.getDate() + "-" + (d.getMonth() + 1) + "-" + d.getFullYear();
+
+      const filePath = `${process.cwd()}/Historial/user_${novaComanda.user_id}_${avui}.txt`;
+
+      const dades = JSON.stringify(novaComanda, null, 2) + '\n';
+
+      fs.appendFile(filePath, dades, function (err) {
+        if (err) {
+          console.error("Error en afegir a l'historial:", err);
+          return res.status(500).send("Error en afegir a l'historial");
+        }
+        console.log("Comanda Afegida a l'historial.");
+        getProductes(connection);
+        res.send("Comanda afegida!");
+        console.log(`Comanda de: ${novaComanda.user_id} afegida correctament!`);
+      });
+
       res.send("Comanda afegida!");
       console.log(`Comanda de: ${novaComanda.user_id} afegida correctament!`);
+
     });
   });
 });
