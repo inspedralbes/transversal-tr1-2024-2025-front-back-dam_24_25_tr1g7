@@ -256,7 +256,8 @@ app.post("/createProducte", (req, res) => {
     material: req.body.material,
     price: req.body.price,
     stock: req.body.stock,
-    string_imatge: req.body.string_imatge
+    string_imatge: req.body.string_imatge,
+    owner_id: req.body.owner_id
   };
 
   const image_file = `${nouProducte.product_name}.png`;
@@ -270,9 +271,9 @@ app.post("/createProducte", (req, res) => {
     }
 
 
-    const query = `INSERT INTO Products (product_name, description, material, price, stock, image_file) VALUES (?, ?, ?, ?, ?, ?)`;
+    const query = `INSERT INTO Products (product_name, description, material, price, stock, image_file, owner_id) VALUES (?, ?, ?, ?, ?, ?, ?)`;
 
-    connection.query(query, [nouProducte.product_name, nouProducte.description, nouProducte.material, nouProducte.price, nouProducte.stock, image_file], (err, results) => {
+    connection.query(query, [nouProducte.product_name, nouProducte.description, nouProducte.material, nouProducte.price, nouProducte.stock, image_file, nouProducte.owner_id], (err, results) => {
       if (err) {
         console.error('Error:', err);
         res.status(500).send("Error en crear el producte");
