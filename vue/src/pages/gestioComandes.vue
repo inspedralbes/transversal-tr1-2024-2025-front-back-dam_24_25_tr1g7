@@ -1,6 +1,6 @@
 <template>
     <v-app>
-        <Header />
+    <NavigationDrawer />
 
         <v-main>
             <v-container class="mt-10">

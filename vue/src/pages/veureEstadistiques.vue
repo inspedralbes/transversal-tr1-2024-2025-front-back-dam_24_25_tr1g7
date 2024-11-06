@@ -1,6 +1,6 @@
 <template>
     <v-app>
-        <Header />
+        <NavigationDrawer />
 
         <v-main>
             <v-container class="mt-10">
@@ -39,6 +39,8 @@
 </template>
 
 <script>
+import NavigationDrawer from '@/components/NavigationDrawer.vue';
+
 export default {
     name: 'Estadistiques',
     data() {

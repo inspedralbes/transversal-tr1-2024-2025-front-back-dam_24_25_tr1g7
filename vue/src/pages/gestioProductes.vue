@@ -1,8 +1,9 @@
 <template>
   <v-app>
-    <Header />
+    <NavigationDrawer />
 
     <v-main>
+
       <v-container class="mt-10">
         <v-row>
           <v-col cols="12" md="6" v-for="producto in productos" :key="producto.product_id">

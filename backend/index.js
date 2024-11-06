@@ -45,23 +45,23 @@ io.on('connection', (socket) => {
 
 /*<-------------------------------------- Connexions ---------------------------------------->*/
 
-// var pool = mysql.createPool({
-//   host: "localhost",
-//   user: "root",
-//   password: "",
-//   database: 'TR1',
-//   port: 3306,
-//   connectionLimit: 10
-// });
+ var pool = mysql.createPool({
+   host: "localhost",
+   user: "root",
+   password: "",
+   database: 'a23alechasan_PR1',
+   port: 3306,
+   connectionLimit: 10
+ });
 
-var pool = mysql.createPool({
+/*var pool = mysql.createPool({
   host: 'localhost',
   user: 'a23alechasan_PR1',
   password: 'Skogsvardet_2024',
   database: 'a23alechasan_PR1',
   port: 3306,
   connectionLimit: 10
-});
+}); */
 
 /*<-------------------------------------- Estadistiques ---------------------------------------->*/
 app.get('/listarInformes', (req, res) => {
