@@ -45,14 +45,14 @@ io.on('connection', (socket) => {
 
 /*<-------------------------------------- Connexions ---------------------------------------->*/
 
-/* var pool = mysql.createPool({
-  host: "localhost",
-  user: "root",
-  password: "",
-  database: 'a23alechasan_pr1',
-  port: 3306,
-  connectionLimit: 10
-}); */
+// var pool = mysql.createPool({
+//   host: "localhost",
+//   user: "root",
+//   password: "",
+//   database: 'TR1',
+//   port: 3306,
+//   connectionLimit: 10
+// });
 
 var pool = mysql.createPool({
   host: 'localhost',
@@ -62,7 +62,6 @@ var pool = mysql.createPool({
   port: 3306,
   connectionLimit: 10
 });
-
 
 /*<-------------------------------------- Estadistiques ---------------------------------------->*/
 app.get('/listarInformes', (req, res) => {
@@ -398,7 +397,6 @@ app.put("/updateProducte", (req, res) => {
   const image_file = `${producte.product_name}.png`
   const filePath = `${process.cwd()}/sources/Imatges/${image_file}`;
 
-
   pool.getConnection((err, connection) => {
     if (err) {
       console.error('Error getting connection from pool:', err);
@@ -407,7 +405,6 @@ app.put("/updateProducte", (req, res) => {
     }
 
     const query = `UPDATE Products SET product_name = ?, description = ?, material = ?, price = ?, stock = ?, image_file = ? WHERE product_id = ?`;
-
 
     connection.query(query, [producte.product_name, producte.description, producte.material, producte.price, producte.stock, image_file, producte.product_id], (err, results) => {
       if (err) {
@@ -430,18 +427,9 @@ app.put("/updateProducte", (req, res) => {
             console.log(`Producte: ${producte.product_name} actualitzat correctament!`);
           });
         } else {
-          const imatgeError = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAAAAACIM/FCAAAChElEQVR4Ae3aMW/TQBxAcb70k91AAiGuGlZAtOlQApWaDiSdklZq2RPUTm1xUWL3PgqSpygkXlh88N54nn7S2Trd3y/CP5IQIUKECBEiRIgQIUKECBEiRIgQIUKECBEiRIgQIUKECBEiRIgQIUKECBEiRIgQIUKECBEiRIgQIUKECPmPIEKECBEiRIgQIeX82+FBO0naB4eTRRkt5P7sNWt1Rw9RQvKThI2SYR4f5OoVW2rfRAYpT6hqHc8WeVHki9mgRdWwiAmyfA9AdrlaW5tlAHxcxQMpK8feRbGxPEkrSREN5ARg/y780V0GMIwFcgXwLg9byvsAN3FA8lfAfr7jYQZ0nqKAfAb21vYVwNruSoEvMUDuE+Ai7IKECZA+RAA5A7JiN6TMgFHzIeUb4DLshoQZ0H1uPGQOvFzVQZYtYNF4yBg4DnWQMAAmjYccArN6yBQ4ajzkAFjUQ+ZAv/GQNpDXQ3Kg03hIAhT1kAJIhLi1/vJl39Ic6Mf3+a2K8PM7BgahtgEwjuKI0lqGjSI8opRdYFb3sk/jODSGEZCVuyFFDzgPzYc8JMBkN2QMpI8RQMIQ2LvdBblNgdM4Lh/aQJaHrf3sAe2nKCDhGqCfb3VEcx1UNQTItlzQ3fYAvoZYIMUHgHRSbiyPU4BPZUSX2JWEbLZcW5v2qByrmMYKxZCq1mA6z4sin08HLapOy8gGPddtttT5HuHobZiwUXr6K85h6KjLWm/PH+MdTy/GR/12knb6g8mPZ38YECJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAh0fUb5q7oCGreEVEAAAAASUVORK5CYII="
-          const base64Image = imatgeError.split(';base64,').pop();
-          fs.writeFile(filePath, base64Image, { encoding: 'base64' }, function (err) {
-            if (err) {
-              console.error('Error en actualitzar la imatge:', err);
-              return res.status(500).send("Error en actualitzar la imatge");
-            }
-            console.log('Imatge actualitzada');
-            getProductes(connection);
-            res.send("Producte actualitzat!");
-            console.log(`Producte: ${producte.product_name} actualitzat correctament!`);
-          });
+          getProductes(connection);
+          res.json(producte); // Send the updated product as JSON
+          console.log(`Producte: ${producte.product_name} actualitzat correctament!`);
         }
       }
       connection.release();
