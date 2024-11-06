@@ -89,184 +89,179 @@ app.get('/listarInformes', (req, res) => {
         console.error('Error al leer el directorio de informes:', err);
         return res.status(500).json({ error: 'Error al leer los informes' });
       }
-  fs.readdir(informesPath, (err, files) => {
-    if (err) {
-      console.error('Error al leer el directorio de informes:', err);
-      return res.status(500).json({ error: 'Error al leer los informes' });
-    }
+      fs.readdir(informesPath, (err, files) => {
+        if (err) {
+          console.error('Error al leer el directorio de informes:', err);
+          return res.status(500).json({ error: 'Error al leer los informes' });
+        }
 
-      const informes = {
-        fechas: {},
-        semanales: [],
-        mensuales: []
-      };
-    const informes = {
-      fechas: {},
-      semanales: [],
-      mensuales: []
+        const informes = {
+          fechas: {},
+          semanales: [],
+          mensuales: []
+        };
+
+        // Procesar las carpetas
+        files.forEach((file) => {
+          const filePath = path.join(informesPath, file);
+          try {
+            // Verificar si es un directorio
+            if (fs.statSync(filePath).isDirectory()) {
+              // Si es la carpeta "semanales" o "mensuales", agregar imágenes directamente
+              if (file === 'semanales' || file === 'mensuales') {
+                const imagenes = fs.readdirSync(filePath)
+                  .filter(img => img.endsWith('.png') || img.endsWith('.jpg') || img.endsWith('.jpeg'));
+                informes[file] = imagenes; // Almacenar imágenes en el objeto bajo su nombre de carpeta
+              } else {
+                // Si es una carpeta de fecha, agregar al objeto de fechas
+                const imagenes = fs.readdirSync(filePath)
+                  .filter(img => img.endsWith('.png') || img.endsWith('.jpg') || img.endsWith('.jpeg'));
+                informes.fechas[file] = imagenes;
+              }
+            }
+          } catch (error) {
+            console.error(`Error procesando el directorio ${filePath}:`, error);
+          }
+        });
+        // Procesar las carpetas
+        files.forEach((file) => {
+          const filePath = path.join(informesPath, file);
+          try {
+            // Verificar si es un directorio
+            if (fs.statSync(filePath).isDirectory()) {
+              // Si es la carpeta "semanales" o "mensuales", agregar imágenes directamente
+              if (file === 'semanales' || file === 'mensuales') {
+                const imagenes = fs.readdirSync(filePath)
+                  .filter(img => img.endsWith('.png') || img.endsWith('.jpg') || img.endsWith('.jpeg'));
+                informes[file] = imagenes; // Almacenar imágenes en el objeto bajo su nombre de carpeta
+              } else {
+                // Si es una carpeta de fecha, agregar al objeto de fechas
+                const imagenes = fs.readdirSync(filePath)
+                  .filter(img => img.endsWith('.png') || img.endsWith('.jpg') || img.endsWith('.jpeg'));
+                informes.fechas[file] = imagenes;
+              }
+            }
+          } catch (error) {
+            console.error(`Error procesando el directorio ${filePath}:`, error);
+          }
+        });
+
+        res.json(informes); // Enviar las fechas y carpetas especiales al cliente
+      });
+    });
+
+  });
+
+  /*<-------------------------------------- Usuaris ---------------------------------------->*/
+
+  app.get("/getUsuaris", (req, res) => {
+    if (req.query.user_id) {
+      const idUsuari = Number(req.query.user_id);
+      for (const usuari of usuaris) {
+        if (usuari.user_id == idUsuari) {
+          res.json(usuari);
+        } else {
+          res.send(`No hi ha cap usuari amb id: ${idUsuari}`);
+        }
+      }
+    } else {
+      res.json(usuaris);
+    }
+  });
+
+  app.post("/createUsuari", (req, res) => {
+    const nouUser = {
+      username: req.query.username,
+      password: req.query.password,
+      first_name: req.query.first_name,
+      last_name: req.query.last_name,
+      email: req.query.email
     };
 
-      // Procesar las carpetas
-      files.forEach((file) => {
-        const filePath = path.join(informesPath, file);
-        try {
-          // Verificar si es un directorio
-          if (fs.statSync(filePath).isDirectory()) {
-            // Si es la carpeta "semanales" o "mensuales", agregar imágenes directamente
-            if (file === 'semanales' || file === 'mensuales') {
-              const imagenes = fs.readdirSync(filePath)
-                .filter(img => img.endsWith('.png') || img.endsWith('.jpg') || img.endsWith('.jpeg'));
-              informes[file] = imagenes; // Almacenar imágenes en el objeto bajo su nombre de carpeta
-            } else {
-              // Si es una carpeta de fecha, agregar al objeto de fechas
-              const imagenes = fs.readdirSync(filePath)
-                .filter(img => img.endsWith('.png') || img.endsWith('.jpg') || img.endsWith('.jpeg'));
-              informes.fechas[file] = imagenes;
-            }
-          }
-        } catch (error) {
-          console.error(`Error procesando el directorio ${filePath}:`, error);
+
+    pool.getConnection((err, connection) => {
+      if (err) {
+        console.error('Error getting connection from pool:', err);
+        res.status(500).send("Error al obtenir connexió");
+        return;
+      }
+
+      const query = `INSERT INTO Users (username, password, first_name, last_name, email) VALUES (?, ?, ?, ?, ?)`;
+
+
+      connection.query(query, [nouUser.username, nouUser.password, nouUser.first_name, nouUser.last_name, nouUser.email], (err, results) => {
+        if (err) {
+          console.error('Error:', err);
+          res.status(500).send("Error en crear l'usuari");
+        } else {
+          getUsers(connection);
+          res.send("Usuari afegit!");
+          console.log(`Usuari: ${nouUser.username} afegit correctament!`)
         }
+        connection.release();
       });
-    // Procesar las carpetas
-    files.forEach((file) => {
-      const filePath = path.join(informesPath, file);
-      try {
-        // Verificar si es un directorio
-        if (fs.statSync(filePath).isDirectory()) {
-          // Si es la carpeta "semanales" o "mensuales", agregar imágenes directamente
-          if (file === 'semanales' || file === 'mensuales') {
-            const imagenes = fs.readdirSync(filePath)
-              .filter(img => img.endsWith('.png') || img.endsWith('.jpg') || img.endsWith('.jpeg'));
-            informes[file] = imagenes; // Almacenar imágenes en el objeto bajo su nombre de carpeta
-          } else {
-            // Si es una carpeta de fecha, agregar al objeto de fechas
-            const imagenes = fs.readdirSync(filePath)
-              .filter(img => img.endsWith('.png') || img.endsWith('.jpg') || img.endsWith('.jpeg'));
-            informes.fechas[file] = imagenes;
-          }
+    });
+  });
+
+  app.delete("/deleteUsuari", (req, res) => {
+    const idUserEliminar = req.query.user_id
+
+    pool.getConnection((err, connection) => {
+      if (err) {
+        console.error('Error getting connection from pool:', err);
+        res.status(500).send("Error al obtenir connexió");
+        return;
+      }
+
+      const query = `DELETE FROM Users WHERE user_id=?;`;
+
+
+      connection.query(query, [idUserEliminar], (err, results) => {
+        if (err) {
+          console.error('Error:', err);
+          res.status(500).send("Error en eliminar l'usuari");
+        } else {
+          getUsers(connection);
+          res.send("Usuari eliminat!");
+          console.log(`Usuari amb id: ${idUserEliminar} eliminat correctament!`)
         }
-      } catch (error) {
-        console.error(`Error procesando el directorio ${filePath}:`, error);
-      }
-    });
-
-      res.json(informes); // Enviar las fechas y carpetas especiales al cliente
+        connection.release();
+      });
     });
   });
 
-});
-
-/*<-------------------------------------- Usuaris ---------------------------------------->*/
-
-app.get("/getUsuaris", (req, res) => {
-  if (req.query.user_id) {
-    const idUsuari = Number(req.query.user_id);
-    for (const usuari of usuaris) {
-      if (usuari.user_id == idUsuari) {
-        res.json(usuari);
-      } else {
-        res.send(`No hi ha cap usuari amb id: ${idUsuari}`);
-      }
-    }
-  } else {
-    res.json(usuaris);
-  }
-});
-
-app.post("/createUsuari", (req, res) => {
-  const nouUser = {
-    username: req.query.username,
-    password: req.query.password,
-    first_name: req.query.first_name,
-    last_name: req.query.last_name,
-    email: req.query.email
-  };
+  app.put("/updateUsuari", (req, res) => {
+    const user = {
+      user_id: req.query.user_id,
+      username: req.query.username,
+      password: req.query.password,
+      first_name: req.query.first_name,
+      last_name: req.query.last_name,
+      email: req.query.email
+    };
 
 
-  pool.getConnection((err, connection) => {
-    if (err) {
-      console.error('Error getting connection from pool:', err);
-      res.status(500).send("Error al obtenir connexió");
-      return;
-    }
-
-    const query = `INSERT INTO Users (username, password, first_name, last_name, email) VALUES (?, ?, ?, ?, ?)`;
-
-
-    connection.query(query, [nouUser.username, nouUser.password, nouUser.first_name, nouUser.last_name, nouUser.email], (err, results) => {
+    pool.getConnection((err, connection) => {
       if (err) {
-        console.error('Error:', err);
-        res.status(500).send("Error en crear l'usuari");
-      } else {
-        getUsers(connection);
-        res.send("Usuari afegit!");
-        console.log(`Usuari: ${nouUser.username} afegit correctament!`)
+        console.error('Error getting connection from pool:', err);
+        res.status(500).send("Error al obtenir connexió");
+        return;
       }
-      connection.release();
-    });
-  });
-});
 
-app.delete("/deleteUsuari", (req, res) => {
-  const idUserEliminar = req.query.user_id
-
-  pool.getConnection((err, connection) => {
-    if (err) {
-      console.error('Error getting connection from pool:', err);
-      res.status(500).send("Error al obtenir connexió");
-      return;
-    }
-
-    const query = `DELETE FROM Users WHERE user_id=?;`;
+      const query = `UPDATE Users SET username = ?, password = ?, first_name = ?, last_name = ?, email = ?  WHERE user_id = ?`;
 
 
-    connection.query(query, [idUserEliminar], (err, results) => {
-      if (err) {
-        console.error('Error:', err);
-        res.status(500).send("Error en eliminar l'usuari");
-      } else {
-        getUsers(connection);
-        res.send("Usuari eliminat!");
-        console.log(`Usuari amb id: ${idUserEliminar} eliminat correctament!`)
-      }
-      connection.release();
-    });
-  });
-});
-
-app.put("/updateUsuari", (req, res) => {
-  const user = {
-    user_id: req.query.user_id,
-    username: req.query.username,
-    password: req.query.password,
-    first_name: req.query.first_name,
-    last_name: req.query.last_name,
-    email: req.query.email
-  };
-
-
-  pool.getConnection((err, connection) => {
-    if (err) {
-      console.error('Error getting connection from pool:', err);
-      res.status(500).send("Error al obtenir connexió");
-      return;
-    }
-
-    const query = `UPDATE Users SET username = ?, password = ?, first_name = ?, last_name = ?, email = ?  WHERE user_id = ?`;
-
-
-    connection.query(query, [user.username, user.password, user.first_name, user.last_name, user.email, user.user_id], (err, results) => {
-      if (err) {
-        console.error('Error:', err);
-        res.status(500).send("Error en actualitzar l'usuari");
-      } else {
-        getUsers(connection);
-        res.send("Usuari actualitzat!");
-        console.log(`Usuari: ${user.username} actualitzat correctament!`)
-      }
-      connection.release();
-    });
+      connection.query(query, [user.username, user.password, user.first_name, user.last_name, user.email, user.user_id], (err, results) => {
+        if (err) {
+          console.error('Error:', err);
+          res.status(500).send("Error en actualitzar l'usuari");
+        } else {
+          getUsers(connection);
+          res.send("Usuari actualitzat!");
+          console.log(`Usuari: ${user.username} actualitzat correctament!`)
+        }
+        connection.release();
+      });
     });
   });
 });
@@ -314,47 +309,47 @@ app.post("/createProducte", (req, res) => {
         res.status(500).send("Error en crear el producte");
       } else {
         if (nouProducte.string_imatge != undefined && nouProducte.string_imatge != "") {
-        if (nouProducte.string_imatge != undefined && nouProducte.string_imatge != "") {
-          const base64Image = nouProducte.string_imatge.split(';base64,').pop();
-          fs.writeFile(filePath, base64Image, { encoding: 'base64' }, function (err) {
-            if (err) {
-              console.error('Error en afegir la imatge:', err);
-              return res.status(500).send("Error en afegir la imatge");
-            }
-            console.log('Imatge afegida');
+          if (nouProducte.string_imatge != undefined && nouProducte.string_imatge != "") {
+            const base64Image = nouProducte.string_imatge.split(';base64,').pop();
+            fs.writeFile(filePath, base64Image, { encoding: 'base64' }, function (err) {
+              if (err) {
+                console.error('Error en afegir la imatge:', err);
+                return res.status(500).send("Error en afegir la imatge");
+              }
+              console.log('Imatge afegida');
 
-            // Añadir el ID del producto recién creado
-            nouProducte.product_id = results.insertId;
-            nouProducte.image_file = image_file;
+              // Añadir el ID del producto recién creado
+              nouProducte.product_id = results.insertId;
+              nouProducte.image_file = image_file;
 
-            // Emitir el nuevo producto a todos los clientes conectados
-            io.emit('nuevoProducto', nouProducte);
+              // Emitir el nuevo producto a todos los clientes conectados
+              io.emit('nuevoProducto', nouProducte);
 
-            getProductes(connection);
-            res.send("Producte afegit!");
-            console.log(`Producte: ${nouProducte.product_name} afegit correctament!`);
-          });
-        } else {
-          const imatgeError = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAAAAACIM/FCAAAChElEQVR4Ae3aMW/TQBxAcb70k91AAiGuGlZAtOlQApWaDiSdklZq2RPUTm1xUWL3PgqSpygkXlh88N54nn7S2Trd3y/CP5IQIUKECBEiRIgQIUKECBEiRIgQIUKECBEiRIgQIUKECBEiRIgQIUKECBEiRIgQIUKECBEiRIgQIUKECPmPIEKECBEiRIgQIeX82+FBO0naB4eTRRkt5P7sNWt1Rw9RQvKThI2SYR4f5OoVW2rfRAYpT6hqHc8WeVHki9mgRdWwiAmyfA9AdrlaW5tlAHxcxQMpK8feRbGxPEkrSREN5ARg/y780V0GMIwFcgXwLg9byvsAN3FA8lfAfr7jYQZ0nqKAfAb21vYVwNruSoEvMUDuE+Ai7IKECZA+RAA5A7JiN6TMgFHzIeUb4DLshoQZ0H1uPGQOvFzVQZYtYNF4yBg4DnWQMAAmjYccArN6yBQ4ajzkAFjUQ+ZAv/GQNpDXQ3Kg03hIAhT1kAJIhLi1/vJl39Ic6Mf3+a2K8PM7BgahtgEwjuKI0lqGjSI8opRdYFb3sk/jODSGEZCVuyFFDzgPzYc8JMBkN2QMpI8RQMIQ2LvdBblNgdM4Lh/aQJaHrf3sAe2nKCDhGqCfb3VEcx1UNQTItlzQ3fYAvoZYIMUHgHRSbiyPU4BPZUSX2JWEbLZcW5v2qByrmMYKxZCq1mA6z4sin08HLapOy8gGPddtttT5HuHobZiwUXr6K85h6KjLWm/PH+MdTy/GR/12knb6g8mPZ38YECJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAh0fUb5q7oCGreEVEAAAAASUVORK5CYII="
-          const base64Image = imatgeError.split(';base64,').pop();
-          fs.writeFile(filePath, base64Image, { encoding: 'base64' }, function (err) {
-            if (err) {
-              console.error('Error en afegir la imatge:', err);
-              return res.status(500).send("Error en afegir la imatge");
-            }
-            console.log('Imatge afegida');
-            getProductes(connection);
-            res.send("Producte afegit!");
-            io.emit('nuevoProducto', nouProducte);
-            console.log(`Producte: ${nouProducte.product_name} afegit correctament!`);
-          });
+              getProductes(connection);
+              res.send("Producte afegit!");
+              console.log(`Producte: ${nouProducte.product_name} afegit correctament!`);
+            });
+          } else {
+            const imatgeError = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAAAAACIM/FCAAAChElEQVR4Ae3aMW/TQBxAcb70k91AAiGuGlZAtOlQApWaDiSdklZq2RPUTm1xUWL3PgqSpygkXlh88N54nn7S2Trd3y/CP5IQIUKECBEiRIgQIUKECBEiRIgQIUKECBEiRIgQIUKECBEiRIgQIUKECBEiRIgQIUKECBEiRIgQIUKECPmPIEKECBEiRIgQIeX82+FBO0naB4eTRRkt5P7sNWt1Rw9RQvKThI2SYR4f5OoVW2rfRAYpT6hqHc8WeVHki9mgRdWwiAmyfA9AdrlaW5tlAHxcxQMpK8feRbGxPEkrSREN5ARg/y780V0GMIwFcgXwLg9byvsAN3FA8lfAfr7jYQZ0nqKAfAb21vYVwNruSoEvMUDuE+Ai7IKECZA+RAA5A7JiN6TMgFHzIeUb4DLshoQZ0H1uPGQOvFzVQZYtYNF4yBg4DnWQMAAmjYccArN6yBQ4ajzkAFjUQ+ZAv/GQNpDXQ3Kg03hIAhT1kAJIhLi1/vJl39Ic6Mf3+a2K8PM7BgahtgEwjuKI0lqGjSI8opRdYFb3sk/jODSGEZCVuyFFDzgPzYc8JMBkN2QMpI8RQMIQ2LvdBblNgdM4Lh/aQJaHrf3sAe2nKCDhGqCfb3VEcx1UNQTItlzQ3fYAvoZYIMUHgHRSbiyPU4BPZUSX2JWEbLZcW5v2qByrmMYKxZCq1mA6z4sin08HLapOy8gGPddtttT5HuHobZiwUXr6K85h6KjLWm/PH+MdTy/GR/12knb6g8mPZ38YECJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAh0fUb5q7oCGreEVEAAAAASUVORK5CYII="
+            const base64Image = imatgeError.split(';base64,').pop();
+            fs.writeFile(filePath, base64Image, { encoding: 'base64' }, function (err) {
+              if (err) {
+                console.error('Error en afegir la imatge:', err);
+                return res.status(500).send("Error en afegir la imatge");
+              }
+              console.log('Imatge afegida');
+              getProductes(connection);
+              res.send("Producte afegit!");
+              io.emit('nuevoProducto', nouProducte);
+              console.log(`Producte: ${nouProducte.product_name} afegit correctament!`);
+            });
+          }
         }
+        connection.release();
       }
-      connection.release();
     });
   });
 });
-
 
 app.delete("/deleteProducte", (req, res) => {
   const idProducteEliminar = req.query.product_id
@@ -450,7 +445,6 @@ app.put("/updateProducte", (req, res) => {
         }
       }
       connection.release();
-    });
     });
   });
 });
@@ -818,7 +812,7 @@ function getComandes(connection) {
     }
   });
 }
-function esborrarComanda(connection, order_id) {
+
 function esborrarComanda(connection, order_id) {
   const query = `DELETE FROM Orders WHERE order_id=?;`;
   connection.query(query, [order_id], (err, results) => {
