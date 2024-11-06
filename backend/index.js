@@ -89,12 +89,22 @@ app.get('/listarInformes', (req, res) => {
         console.error('Error al leer el directorio de informes:', err);
         return res.status(500).json({ error: 'Error al leer los informes' });
       }
+  fs.readdir(informesPath, (err, files) => {
+    if (err) {
+      console.error('Error al leer el directorio de informes:', err);
+      return res.status(500).json({ error: 'Error al leer los informes' });
+    }
 
       const informes = {
         fechas: {},
         semanales: [],
         mensuales: []
       };
+    const informes = {
+      fechas: {},
+      semanales: [],
+      mensuales: []
+    };
 
       // Procesar las carpetas
       files.forEach((file) => {
@@ -118,6 +128,28 @@ app.get('/listarInformes', (req, res) => {
           console.error(`Error procesando el directorio ${filePath}:`, error);
         }
       });
+    // Procesar las carpetas
+    files.forEach((file) => {
+      const filePath = path.join(informesPath, file);
+      try {
+        // Verificar si es un directorio
+        if (fs.statSync(filePath).isDirectory()) {
+          // Si es la carpeta "semanales" o "mensuales", agregar imágenes directamente
+          if (file === 'semanales' || file === 'mensuales') {
+            const imagenes = fs.readdirSync(filePath)
+              .filter(img => img.endsWith('.png') || img.endsWith('.jpg') || img.endsWith('.jpeg'));
+            informes[file] = imagenes; // Almacenar imágenes en el objeto bajo su nombre de carpeta
+          } else {
+            // Si es una carpeta de fecha, agregar al objeto de fechas
+            const imagenes = fs.readdirSync(filePath)
+              .filter(img => img.endsWith('.png') || img.endsWith('.jpg') || img.endsWith('.jpeg'));
+            informes.fechas[file] = imagenes;
+          }
+        }
+      } catch (error) {
+        console.error(`Error procesando el directorio ${filePath}:`, error);
+      }
+    });
 
       res.json(informes); // Enviar las fechas y carpetas especiales al cliente
     });
@@ -151,6 +183,7 @@ app.post("/createUsuari", (req, res) => {
     email: req.query.email
   };
 
+
   pool.getConnection((err, connection) => {
     if (err) {
       console.error('Error getting connection from pool:', err);
@@ -159,6 +192,7 @@ app.post("/createUsuari", (req, res) => {
     }
 
     const query = `INSERT INTO Users (username, password, first_name, last_name, email) VALUES (?, ?, ?, ?, ?)`;
+
 
     connection.query(query, [nouUser.username, nouUser.password, nouUser.first_name, nouUser.last_name, nouUser.email], (err, results) => {
       if (err) {
@@ -186,6 +220,7 @@ app.delete("/deleteUsuari", (req, res) => {
 
     const query = `DELETE FROM Users WHERE user_id=?;`;
 
+
     connection.query(query, [idUserEliminar], (err, results) => {
       if (err) {
         console.error('Error:', err);
@@ -210,6 +245,7 @@ app.put("/updateUsuari", (req, res) => {
     email: req.query.email
   };
 
+
   pool.getConnection((err, connection) => {
     if (err) {
       console.error('Error getting connection from pool:', err);
@@ -218,6 +254,7 @@ app.put("/updateUsuari", (req, res) => {
     }
 
     const query = `UPDATE Users SET username = ?, password = ?, first_name = ?, last_name = ?, email = ?  WHERE user_id = ?`;
+
 
     connection.query(query, [user.username, user.password, user.first_name, user.last_name, user.email, user.user_id], (err, results) => {
       if (err) {
@@ -229,6 +266,7 @@ app.put("/updateUsuari", (req, res) => {
         console.log(`Usuari: ${user.username} actualitzat correctament!`)
       }
       connection.release();
+    });
     });
   });
 });
@@ -259,17 +297,14 @@ app.post("/createProducte", (req, res) => {
     string_imatge: req.body.string_imatge,
     owner_id: req.body.owner_id
   };
-
   const image_file = `${nouProducte.product_name}.png`;
   const filePath = `${process.cwd()}/sources/Imatges/${image_file}`;
 
   pool.getConnection((err, connection) => {
     if (err) {
       console.error('Error getting connection from pool:', err);
-      res.status(500).send("Error al obtenir connexió");
-      return;
+      return res.status(500).send("Error al obtenir connexió");
     }
-
 
     const query = `INSERT INTO Products (product_name, description, material, price, stock, image_file, owner_id) VALUES (?, ?, ?, ?, ?, ?, ?)`;
 
@@ -279,6 +314,7 @@ app.post("/createProducte", (req, res) => {
         res.status(500).send("Error en crear el producte");
       } else {
         if (nouProducte.string_imatge != undefined && nouProducte.string_imatge != "") {
+        if (nouProducte.string_imatge != undefined && nouProducte.string_imatge != "") {
           const base64Image = nouProducte.string_imatge.split(';base64,').pop();
           fs.writeFile(filePath, base64Image, { encoding: 'base64' }, function (err) {
             if (err) {
@@ -286,6 +322,14 @@ app.post("/createProducte", (req, res) => {
               return res.status(500).send("Error en afegir la imatge");
             }
             console.log('Imatge afegida');
+
+            // Añadir el ID del producto recién creado
+            nouProducte.product_id = results.insertId;
+            nouProducte.image_file = image_file;
+
+            // Emitir el nuevo producto a todos los clientes conectados
+            io.emit('nuevoProducto', nouProducte);
+
             getProductes(connection);
             res.send("Producte afegit!");
             console.log(`Producte: ${nouProducte.product_name} afegit correctament!`);
@@ -301,6 +345,7 @@ app.post("/createProducte", (req, res) => {
             console.log('Imatge afegida');
             getProductes(connection);
             res.send("Producte afegit!");
+            io.emit('nuevoProducto', nouProducte);
             console.log(`Producte: ${nouProducte.product_name} afegit correctament!`);
           });
         }
@@ -316,12 +361,9 @@ app.delete("/deleteProducte", (req, res) => {
   pool.getConnection((err, connection) => {
     if (err) {
       console.error('Error getting connection from pool:', err);
-      res.status(500).send("Error al obtenir connexió");
-      return;
+      return res.status(500).send("Error al obtenir connexió");
     }
-
     const query = `DELETE FROM Products WHERE product_id=?;`;
-
     connection.query(query, [idProducteEliminar], (err, results) => {
       if (err) {
         console.error('Error:', err);
@@ -336,6 +378,7 @@ app.delete("/deleteProducte", (req, res) => {
         var filePath = `${process.cwd()}/sources/Imatges/${producteEliminar.image_file}`;
         fs.unlinkSync(filePath);
         getProductes(connection);
+        io.emit('productoEliminado', idProducteEliminar);
         res.send("Producte eliminat!");
         console.log(`Producte amb id: ${idProducteEliminar} eliminat correctament!`)
       }
@@ -346,17 +389,20 @@ app.delete("/deleteProducte", (req, res) => {
 
 app.put("/updateProducte", (req, res) => {
   const producte = {
-    product_id: req.body.product_id,
-    product_name: req.body.product_name,
-    description: req.body.description,
-    material: req.body.material,
-    price: req.body.price,
-    stock: req.body.stock,
-    string_imatge: req.body.string_imatge
+    product_id: req.query.product_id,
+    product_name: req.query.product_name,
+    description: req.query.description,
+    material: req.query.material,
+    price: req.query.price,
+    stock: req.query.stock,
+    string_imatge: req.query.string_imatge
   };
+
+  console.log('Received product data:', producte);
 
   const image_file = `${producte.product_name}.png`
   const filePath = `${process.cwd()}/sources/Imatges/${image_file}`;
+
 
   pool.getConnection((err, connection) => {
     if (err) {
@@ -367,11 +413,15 @@ app.put("/updateProducte", (req, res) => {
 
     const query = `UPDATE Products SET product_name = ?, description = ?, material = ?, price = ?, stock = ?, image_file = ? WHERE product_id = ?`;
 
+
     connection.query(query, [producte.product_name, producte.description, producte.material, producte.price, producte.stock, image_file, producte.product_id], (err, results) => {
       if (err) {
         console.error('Error:', err);
         res.status(500).send("Error en actualitzar el producte");
       } else {
+        // Emit socket event for stock update
+        io.emit('stockActualizado', { product_id: producte.product_id, stock: producte.stock });
+
         if (producte.string_imatge != undefined && producte.string_imatge != "") {
           const base64Image = producte.string_imatge.split(';base64,').pop();
           fs.writeFile(filePath, base64Image, { encoding: 'base64' }, function (err) {
@@ -381,7 +431,7 @@ app.put("/updateProducte", (req, res) => {
             }
             console.log('Imatge actualitzada');
             getProductes(connection);
-            res.send("Producte actualitzat!");
+            res.json(producte); // Send the updated product as JSON
             console.log(`Producte: ${producte.product_name} actualitzat correctament!`);
           });
         } else {
@@ -400,6 +450,7 @@ app.put("/updateProducte", (req, res) => {
         }
       }
       connection.release();
+    });
     });
   });
 });
@@ -422,11 +473,13 @@ app.get("/getComandes", (req, res) => {
 
 app.post("/createComanda", (req, res) => {
   const novaComanda = {
-    user_id: req.query.user_id,
-    product_id: req.query.product_id,
-    total: req.query.total,
-    status: 'waiting'
+    user_id: req.body.user_id,
+    product_id: req.body.product_id,
+    quantity: req.body.quantity,
+    total: req.body.total,
+    status: 'pending' // O el estado inicial que prefieras
   };
+
 
   pool.getConnection((err, connection) => {
     if (err) {
@@ -440,17 +493,50 @@ app.post("/createComanda", (req, res) => {
       connection.release();
 
       if (err) {
-        console.error('Error:', err);
-        return res.status(500).send("Error en crear la comanda");
+        connection.release();
+        return res.status(500).send("Error al iniciar la transacción");
       }
 
-      novaComanda.order_id = results.insertId;
-      comandes.push(novaComanda);
+      // Insertar la nueva comanda
+      const queryComanda = `INSERT INTO Orders (user_id, product_id, quantity, total, status) VALUES (?, ?, ?, ?, ?)`;
+      connection.query(queryComanda, [novaComanda.user_id, novaComanda.product_id, novaComanda.quantity, novaComanda.total, novaComanda.status], (err, results) => {
+        if (err) {
+          return connection.rollback(() => {
+            connection.release();
+            res.status(500).send("Error en crear la comanda");
+          });
+        }
 
-      io.emit('nuevaComanda', novaComanda);
+        // Actualizar el stock del producto
+        const queryUpdateStock = `UPDATE Products SET stock = stock - ? WHERE product_id = ?`;
+        connection.query(queryUpdateStock, [novaComanda.quantity, novaComanda.product_id], (err, updateResults) => {
+          if (err) {
+            return connection.rollback(() => {
+              connection.release();
+              res.status(500).send("Error en actualitzar l'estoc");
+            });
+          }
 
-      res.send("Comanda afegida!");
-      console.log(`Comanda de: ${novaComanda.user_id} afegida correctament!`);
+          connection.commit((err) => {
+            if (err) {
+              return connection.rollback(() => {
+                connection.release();
+                res.status(500).send("Error en finalitzar la transacció");
+              });
+            }
+
+            // Emitir evento de socket para la nueva comanda y actualización de stock
+            io.emit('nuevaComanda', { ...novaComanda, order_id: results.insertId });
+            io.emit('stockActualizado', { product_id: novaComanda.product_id, newStock: updateResults.affectedRows });
+
+            getComandes(connection);
+            getProductes(connection);
+            res.send("Comanda afegida i estoc actualitzat!");
+            console.log(`Comanda afegida i estoc actualitzat per al producte: ${novaComanda.product_id}`);
+            connection.release();
+          });
+        });
+      });
     });
   });
 });
@@ -466,6 +552,7 @@ app.delete("/deleteComanda", (req, res) => {
     }
 
     const query = `DELETE FROM Orders WHERE order_id=?;`;
+
 
     connection.query(query, [idComandaEliminar], (err, results) => {
       if (err) {
@@ -485,16 +572,25 @@ const cambioEstado = (order_id, status) => {
   console.log(`Emitiendo cambio de estado: order_id=${order_id}, status=${status}`);
   io.emit('cambioEstado', { order_id, status });
 
+
   const comanda = comandes.find(c => c.order_id === Number(order_id));
   if (comanda) {
     comanda.status = status;
     console.log(`L'ordre: ${order_id} està '${status}'!`);
+
+    // Si la comanda está cancelada, emitir un evento para eliminarla
+    if (status === 'canceled') {
+      io.emit('eliminarComanda', order_id);
+      // Eliminar la comanda del array local
+      comandes = comandes.filter(c => c.order_id !== Number(order_id));
+    }
   }
 };
 
-const handleStateChange = (status) => {
+const ChangeStatus = (status) => {
   return (req, res) => {
     const order_id = req.query.order_id;
+
 
     const sendResponse = (statusCode, message) => {
       if (!res.headersSent) {
@@ -527,13 +623,141 @@ const handleStateChange = (status) => {
   };
 };
 
+app.put("/waiting", ChangeStatus('waiting'));
+app.put("/pending", ChangeStatus('pending'));
+app.put("/shipped", ChangeStatus('shipped'));
+app.put("/verified", ChangeStatus('verified'));
 
-app.put("/waiting", handleStateChange('waiting'));
-app.put("/pending", handleStateChange('pending'));
-app.put("/shipped", handleStateChange('shipped'));
-app.put("/verified", handleStateChange('verified'));
-app.put("/confirmed", handleStateChange('confirmed'));
-app.put("/canceled", handleStateChange('canceled'));
+app.put("/confirmed", (req, res) => {
+  const order_id = req.query.order_id;
+  console.log('Confirming order:', order_id);
+
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error getting connection from pool:', err);
+      return res.status(500).send("Error al obtenir connexió");
+    }
+
+    connection.beginTransaction((err) => {
+      if (err) {
+        connection.release();
+        return res.status(500).send("Error al iniciar la transacción");
+      }
+
+      // Get order details
+      const queryGetOrder = `SELECT product_id FROM Orders WHERE order_id = ?`;
+      connection.query(queryGetOrder, [order_id], (err, orderResults) => {
+        if (err || orderResults.length === 0) {
+          return connection.rollback(() => {
+            connection.release();
+            res.status(500).send("Error al obtener la información de la comanda");
+          });
+        }
+
+        const { product_id } = orderResults[0];
+
+        // Update order status
+        const queryUpdateOrder = `UPDATE Orders SET status = 'confirmed' WHERE order_id = ?`;
+        connection.query(queryUpdateOrder, [order_id], (err, updateResults) => {
+          if (err) {
+            return connection.rollback(() => {
+              connection.release();
+              res.status(500).send("Error al actualizar el estado de la comanda");
+            });
+          }
+
+          // Update product stock
+          const queryUpdateStock = `UPDATE Products SET stock = stock - 1 WHERE product_id = ?`;
+          connection.query(queryUpdateStock, [product_id], (err, stockResults) => {
+            if (err) {
+              return connection.rollback(() => {
+                connection.release();
+                res.status(500).send("Error al actualizar el stock del producto");
+              });
+            }
+
+            connection.commit((err) => {
+              if (err) {
+                return connection.rollback(() => {
+                  connection.release();
+                  res.status(500).send("Error al finalizar la transacción");
+                });
+              }
+
+              // Get updated stock
+              const queryGetStock = `SELECT stock FROM Products WHERE product_id = ?`;
+              connection.query(queryGetStock, [product_id], (err, stockResults) => {
+                if (err) {
+                  console.error('Error al obtener el stock actualizado:', err);
+                  connection.release();
+                  return res.status(500).send("Error al obtener el stock actualizado");
+                }
+
+                const newStock = stockResults[0].stock;
+
+                // Update local data
+                updateLocalOrderStatus(order_id, 'confirmed');
+                updateLocalProductStock(product_id, newStock);
+
+                // Emit socket events
+                io.emit('cambioEstado', { order_id, status: 'confirmed' });
+                io.emit('stockActualizado', { product_id, stock: newStock });
+                console.log('Emitting socket events:', { order_id, product_id, newStock });
+
+                res.json({ message: "Comanda confirmada y stock actualizado", newStock });
+                console.log(`Comanda ${order_id} confirmada y stock actualizado para el producto ${product_id}`);
+                connection.release();
+              });
+            });
+          });
+        });
+      });
+    });
+  });
+});
+
+// Funciones para actualizar datos locales
+function updateLocalOrderStatus(order_id, newStatus) {
+  const order = comandes.find(o => o.order_id === parseInt(order_id));
+  if (order) {
+    order.status = newStatus;
+    console.log(`Estado de la comanda ${order_id} actualizado localmente a ${newStatus}`);
+  } else {
+    console.log(`Comanda ${order_id} no encontrada en la lista local`);
+  }
+}
+
+function updateLocalProductStock(product_id, newStock) {
+  const product = productes.find(p => p.product_id === parseInt(product_id));
+  if (product) {
+    product.stock = newStock;
+    console.log(`Stock del producto ${product_id} actualizado localmente a ${newStock}`);
+  } else {
+    console.log(`Producto ${product_id} no encontrado en la lista local`);
+  }
+}
+
+app.put("/canceled", (req, res) => {
+  const order_id = req.query.order_id;
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error getting connection from pool:', err);
+      return res.status(500).send("Error al obtenir connexió");
+    }
+
+    const query = `UPDATE Orders SET status = 'canceled' WHERE order_id = ?`;
+    connection.query(query, [order_id], (err, results) => {
+      connection.release();
+      if (err) {
+        console.error('Error:', err);
+        return res.status(500).send("Error en cancelar la comanda");
+      }
+
+      cambioEstado(order_id, 'canceled');
+      res.send("Comanda cancelada!");
+    });
+  });
+});
 
 /*<-------------------------------------- Inici App ---------------------------------------->*/
 
@@ -550,6 +774,7 @@ pool.getConnection((err, connection) => {
     console.error('Error getting connection from pool:', err);
     return;
   }
+
 
   console.log("Connected to the pool!");
 
@@ -571,11 +796,13 @@ function getUsers(connection) {
 }
 
 function getProductes(connection) {
-  connection.query('SELECT * FROM Products', (err, results) => {
+  const query = "SELECT * FROM Products";
+  connection.query(query, (err, results) => {
     if (err) {
-      console.error('Error:', err);
+      console.error('Error getting products:', err);
     } else {
       productes = results;
+      console.log('Products updated in memory');
     }
   });
 }
@@ -591,6 +818,7 @@ function getComandes(connection) {
     }
   });
 }
+function esborrarComanda(connection, order_id) {
 function esborrarComanda(connection, order_id) {
   const query = `DELETE FROM Orders WHERE order_id=?;`;
   connection.query(query, [order_id], (err, results) => {
