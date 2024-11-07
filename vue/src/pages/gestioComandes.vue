@@ -111,13 +111,19 @@ export default {
         },
         actualizarEstadoComanda({ order_id, status }) {
             console.log('Actualizando estado de comanda:', order_id, status);
-            const comanda = this.comandes.find(c => c.order_id === parseInt(order_id));
-            if (comanda) {
-                comanda.status = status;
+
+            // Find and update the corresponding order
+            const comandaIndex = this.comandes.findIndex(c => c.order_id === parseInt(order_id));
+
+            if (comandaIndex !== -1) { // Order exists
+                // Remove the order from local state
+                this.comandes.splice(comandaIndex, 1); // Remove from array
+
+                // Force reactivity update
                 this.$forceUpdate();
-            } else {
+            } else { // If not found, refresh orders
                 console.warn(`Comanda con id ${order_id} no encontrada`);
-                this.obtenerComandes();
+                this.obtenerComandes(); // Refresh the list if not found
             }
         },
         agregarNuevaComanda(nuevaComanda) {
@@ -142,11 +148,14 @@ export default {
         async obtenerComandes() {
             try {
                 const response = await fetch(this.urlComandes);
-                if (!response.ok) {
-                    throw new Error('Error en la respuesta de la red');
-                }
+                if (!response.ok) throw new Error('Error en la respuesta de la red');
+
                 this.comandes = await response.json();
                 console.log('Comandes obtenidas:', this.comandes);
+
+                // Optionally filter out confirmed or canceled orders here if needed
+                this.comandes = this.comandes.filter(c => c.status !== 'confirmed' && c.status !== 'canceled');
+
             } catch (error) {
                 console.error('Error al obtener comandes:', error);
             }
