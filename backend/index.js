@@ -30,7 +30,7 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: "*", // O especifica el origen de tu cliente
+    origin: "*",
     methods: ["GET", "POST", "PUT", "DELETE"],
   }
 });
@@ -78,10 +78,9 @@ app.get('/listarInformes', (req, res) => {
   });
 
   pythonProcess.on('close', (code) => {
-    // Ruta para listar las carpetas y las imágenes disponibles dentro de `informes`
     const informesPath = path.join(__dirname, 'Estadistiques', 'informes');
 
-    console.log('Path de informes:', informesPath); // Para depuración
+    console.log('Path de informes:', informesPath);
 
     fs.readdir(informesPath, (err, files) => {
       if (err) {
@@ -100,19 +99,15 @@ app.get('/listarInformes', (req, res) => {
           mensuales: []
         };
 
-        // Procesar las carpetas
         files.forEach((file) => {
           const filePath = path.join(informesPath, file);
           try {
-            // Verificar si es un directorio
             if (fs.statSync(filePath).isDirectory()) {
-              // Si es la carpeta "semanales" o "mensuales", agregar imágenes directamente
               if (file === 'semanales' || file === 'mensuales') {
                 const imagenes = fs.readdirSync(filePath)
                   .filter(img => img.endsWith('.png') || img.endsWith('.jpg') || img.endsWith('.jpeg'));
-                informes[file] = imagenes; // Almacenar imágenes en el objeto bajo su nombre de carpeta
+                informes[file] = imagenes;
               } else {
-                // Si es una carpeta de fecha, agregar al objeto de fechas
                 const imagenes = fs.readdirSync(filePath)
                   .filter(img => img.endsWith('.png') || img.endsWith('.jpg') || img.endsWith('.jpeg'));
                 informes.fechas[file] = imagenes;
@@ -122,19 +117,15 @@ app.get('/listarInformes', (req, res) => {
             console.error(`Error procesando el directorio ${filePath}:`, error);
           }
         });
-        // Procesar las carpetas
         files.forEach((file) => {
           const filePath = path.join(informesPath, file);
           try {
-            // Verificar si es un directorio
             if (fs.statSync(filePath).isDirectory()) {
-              // Si es la carpeta "semanales" o "mensuales", agregar imágenes directamente
               if (file === 'semanales' || file === 'mensuales') {
                 const imagenes = fs.readdirSync(filePath)
                   .filter(img => img.endsWith('.png') || img.endsWith('.jpg') || img.endsWith('.jpeg'));
-                informes[file] = imagenes; // Almacenar imágenes en el objeto bajo su nombre de carpeta
+                informes[file] = imagenes;
               } else {
-                // Si es una carpeta de fecha, agregar al objeto de fechas
                 const imagenes = fs.readdirSync(filePath)
                   .filter(img => img.endsWith('.png') || img.endsWith('.jpg') || img.endsWith('.jpeg'));
                 informes.fechas[file] = imagenes;
@@ -145,7 +136,7 @@ app.get('/listarInformes', (req, res) => {
           }
         });
 
-        res.json(informes); // Enviar las fechas y carpetas especiales al cliente
+        res.json(informes);
       });
     });
 
@@ -317,11 +308,9 @@ app.post("/createProducte", (req, res) => {
               }
               console.log('Imatge afegida');
 
-              // Añadir el ID del producto recién creado
               nouProducte.product_id = results.insertId;
               nouProducte.image_file = image_file;
 
-              // Emitir el nuevo producto a todos los clientes conectados
               io.emit('nuevoProducto', nouProducte);
 
               getProductes(connection);
@@ -423,12 +412,12 @@ app.put("/updateProducte", (req, res) => {
             }
             console.log('Imatge actualitzada');
             getProductes(connection);
-            res.json(producte); // Send the updated product as JSON
+            res.json(producte);
             console.log(`Producte: ${producte.product_name} actualitzat correctament!`);
           });
         } else {
           getProductes(connection);
-          res.json(producte); // Send the updated product as JSON
+          res.json(producte);
           console.log(`Producte: ${producte.product_name} actualitzat correctament!`);
         }
       }
@@ -459,7 +448,7 @@ app.post("/createComanda", (req, res) => {
     product_id: req.body.product_id,
     quantity: req.body.quantity,
     total: req.body.total,
-    status: 'pending' // O el estado inicial que prefieras
+    status: 'pending'
   };
 
 
@@ -479,7 +468,6 @@ app.post("/createComanda", (req, res) => {
         return res.status(500).send("Error al iniciar la transacción");
       }
 
-      // Insertar la nueva comanda
       const queryComanda = `INSERT INTO Orders (user_id, product_id, quantity, total, status) VALUES (?, ?, ?, ?, ?)`;
       connection.query(queryComanda, [novaComanda.user_id, novaComanda.product_id, novaComanda.quantity, novaComanda.total, novaComanda.status], (err, results) => {
         if (err) {
@@ -489,7 +477,6 @@ app.post("/createComanda", (req, res) => {
           });
         }
 
-        // Actualizar el stock del producto
         const queryUpdateStock = `UPDATE Products SET stock = stock - ? WHERE product_id = ?`;
         connection.query(queryUpdateStock, [novaComanda.quantity, novaComanda.product_id], (err, updateResults) => {
           if (err) {
@@ -507,7 +494,6 @@ app.post("/createComanda", (req, res) => {
               });
             }
 
-            // Emitir evento de socket para la nueva comanda y actualización de stock
             io.emit('nuevaComanda', { ...novaComanda, order_id: results.insertId });
             io.emit('stockActualizado', { product_id: novaComanda.product_id, newStock: updateResults.affectedRows });
 
@@ -560,10 +546,8 @@ const cambioEstado = (order_id, status) => {
     comanda.status = status;
     console.log(`L'ordre: ${order_id} està '${status}'!`);
 
-    // Si la comanda está cancelada, emitir un evento para eliminarla
     if (status === 'canceled') {
       io.emit('eliminarComanda', order_id);
-      // Eliminar la comanda del array local
       comandes = comandes.filter(c => c.order_id !== Number(order_id));
     }
   }
@@ -626,7 +610,6 @@ app.put("/confirmed", (req, res) => {
         return res.status(500).send("Error al iniciar la transacción");
       }
 
-      // Get order details
       const queryGetOrder = `SELECT product_id FROM Orders WHERE order_id = ?`;
       connection.query(queryGetOrder, [order_id], (err, orderResults) => {
         if (err || orderResults.length === 0) {
@@ -638,7 +621,6 @@ app.put("/confirmed", (req, res) => {
 
         const { product_id } = orderResults[0];
 
-        // Update order status
         const queryUpdateOrder = `UPDATE Orders SET status = 'confirmed' WHERE order_id = ?`;
         connection.query(queryUpdateOrder, [order_id], (err, updateResults) => {
           if (err) {
@@ -648,7 +630,6 @@ app.put("/confirmed", (req, res) => {
             });
           }
 
-          // Update product stock
           const queryUpdateStock = `UPDATE Products SET stock = stock - 1 WHERE product_id = ?`;
           connection.query(queryUpdateStock, [product_id], (err, stockResults) => {
             if (err) {
@@ -666,7 +647,6 @@ app.put("/confirmed", (req, res) => {
                 });
               }
 
-              // Get updated stock
               const queryGetStock = `SELECT stock FROM Products WHERE product_id = ?`;
               connection.query(queryGetStock, [product_id], (err, stockResults) => {
                 if (err) {
@@ -677,11 +657,9 @@ app.put("/confirmed", (req, res) => {
 
                 const newStock = stockResults[0].stock;
 
-                // Update local data
                 updateLocalOrderStatus(order_id, 'confirmed');
                 updateLocalProductStock(product_id, newStock);
 
-                // Emit socket events
                 io.emit('cambioEstado', { order_id, status: 'confirmed' });
                 io.emit('stockActualizado', { product_id, stock: newStock });
                 console.log('Emitting socket events:', { order_id, product_id, newStock });
@@ -698,7 +676,6 @@ app.put("/confirmed", (req, res) => {
   });
 });
 
-// Funciones para actualizar datos locales
 function updateLocalOrderStatus(order_id, newStatus) {
   const order = comandes.find(o => o.order_id === parseInt(order_id));
   if (order) {

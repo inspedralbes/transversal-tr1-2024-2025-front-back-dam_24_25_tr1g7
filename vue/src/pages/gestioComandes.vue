@@ -114,17 +114,16 @@ export default {
             const comanda = this.comandes.find(c => c.order_id === parseInt(order_id));
             if (comanda) {
                 comanda.status = status;
-                this.$forceUpdate(); // Forzar a Vue a re-renderizar
+                this.$forceUpdate();
             } else {
                 console.warn(`Comanda con id ${order_id} no encontrada`);
-                // Opcionalmente, podrías recargar todas las comandas aquí
                 this.obtenerComandes();
             }
         },
         agregarNuevaComanda(nuevaComanda) {
             console.log('Nueva comanda recibida:', nuevaComanda);
             this.comandes.push(nuevaComanda);
-            this.$forceUpdate(); // Forzar a Vue a re-renderizar
+            this.$forceUpdate();
         },
         async obtenerDetallesProducto(productId) {
             try {
@@ -177,7 +176,6 @@ export default {
                 const data = await response.json();
                 console.log(`Respuesta del servidor:`, data);
 
-                // La actualización local se maneja en el método actualizarEstadoComanda
                 this.dialogoActivo = false;
             } catch (error) {
                 console.error('Error al cambiar el estado de la comanda:', error);

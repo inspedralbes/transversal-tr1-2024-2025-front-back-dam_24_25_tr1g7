@@ -4,7 +4,6 @@
 
         <v-main>
             <v-container class="mt-10">
-                <!-- Selector de tipo de informe -->
                 <v-select
                     v-model="tipoSeleccionado"
                     :items="['fechas', 'semanales', 'mensuales']"
@@ -12,7 +11,6 @@
                     @change="cargarInformes"
                 />
 
-                <!-- Selector de fechas si el tipo es 'fechas' -->
                 <v-select
                     v-if="tipoSeleccionado === 'fechas'"
                     v-model="fechaSeleccionada"
@@ -21,7 +19,6 @@
                     @change="cargarInformes"
                 />
 
-                <!-- Mostrar gráficos -->
                 <v-row v-if="imagenes.length">
                     <v-col cols="12" md="6" v-for="imagen in imagenes" :key="imagen">
                         <v-card>
@@ -49,7 +46,7 @@ export default {
             fechaSeleccionada: null,
             fechas: [],
             imagenes: [],
-            informes: {} // Almacena los informes cargados desde el servidor
+            informes: {}
         };
     },
     created() {
@@ -62,12 +59,10 @@ export default {
                 if (!response.ok) throw new Error("Error al cargar los informes");
                 this.informes = await response.json();
 
-                // Extraer fechas como opciones si el tipo de informe es "fechas"
                 if (this.tipoSeleccionado === 'fechas') {
                     this.fechas = Object.keys(this.informes.fechas);
                 }
 
-                // Cargar imágenes según el tipo seleccionado
                 this.actualizarImagenes();
             } catch (error) {
                 console.error("Error cargando los informes:", error);
@@ -90,17 +85,16 @@ export default {
                 this.imagenes = [];
             }
 
-            // Imprimir las rutas de las imágenes generadas para depuración
             console.log("Imágenes a mostrar:", this.imagenes);
         }
     },
     watch: {
         tipoSeleccionado() {
-            this.fechaSeleccionada = null; // Reiniciar la fecha cuando se cambia el tipo de informe
-            this.cargarInformes(); // Volver a cargar los informes
+            this.fechaSeleccionada = null;
+            this.cargarInformes();
         },
         fechaSeleccionada() {
-            this.actualizarImagenes(); // Actualizar las imágenes al cambiar la fecha
+            this.actualizarImagenes();
         }
     }
 };

@@ -86,21 +86,20 @@ export default {
       const producto = this.productos.find(p => p.product_id === parseInt(product_id));
       if (producto) {
         producto.stock = parseInt(stock);
-        this.$forceUpdate(); // Force Vue to re-render
+        this.$forceUpdate();
       } else {
         console.warn(`Producto con id ${product_id} no encontrado`);
-        // Opcionalmente, podrías recargar todos los productos aquí
         this.obtenerProductos();
       }
     },
     agregarNuevoProducto(producto) {
       console.log('Nuevo producto recibido:', producto);
       this.productos.push(producto);
-      this.$forceUpdate(); // Force Vue to re-render
+      this.$forceUpdate();
     },
     eliminarProductoLocal(productId) {
       this.productos = this.productos.filter(p => p.product_id !== parseInt(productId));
-      this.$forceUpdate(); // Force Vue to re-render
+      this.$forceUpdate();
     },
     async obtenerProductos() {
       try {
