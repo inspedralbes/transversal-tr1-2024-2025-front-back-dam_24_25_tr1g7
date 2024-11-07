@@ -12,6 +12,7 @@ const { Server } = require('socket.io');
 const appJSON = express
 const app = express();
 app.use(express.json({ limit: '200mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(cors());
 const port = 21345;
 
@@ -19,6 +20,7 @@ app.use('/sources/Imatges', express.static(path.join(__dirname, 'sources/Imatges
 app.use('/informes', express.static(path.join(__dirname, 'Estadistiques', 'informes')));
 
 var mysql = require('mysql2');
+const { error } = require('console');
 
 var usuaris = [];
 var productes = [];
@@ -282,6 +284,9 @@ app.post("/createProducte", (req, res) => {
     string_imatge: req.body.string_imatge,
     owner_id: req.body.owner_id
   };
+
+  console.log(nouProducte.string_imatge)
+
   const image_file = `${nouProducte.product_name}.png`;
   const filePath = `${process.cwd()}/sources/Imatges/${image_file}`;
 
@@ -358,12 +363,17 @@ app.delete("/deleteProducte", (req, res) => {
             producteEliminar = producte
           }
         }
-        var filePath = `${process.cwd()}/sources/Imatges/${producteEliminar.image_file}`;
-        fs.unlinkSync(filePath);
-        getProductes(connection);
-        io.emit('productoEliminado', idProducteEliminar);
-        res.send("Producte eliminat!");
-        console.log(`Producte amb id: ${idProducteEliminar} eliminat correctament!`)
+        try {
+          var filePath = `${process.cwd()}/sources/Imatges/${producteEliminar.image_file}`;
+          if (filePath) {
+            fs.unlinkSync(filePath);
+          }
+          getProductes(connection);
+          res.send("Producte eliminat!");
+          console.log(`Producte amb id: ${idProducteEliminar} eliminat correctament!`)
+        } catch (error) {
+          console.log("Error en eliminar la imatge:", error);
+        }
       }
       connection.release();
     });
@@ -381,49 +391,59 @@ app.put("/updateProducte", (req, res) => {
     string_imatge: req.query.string_imatge
   };
 
-  console.log('Received product data:', producte);
+  if (producte.stock != 0) {
+    const image_file = `${producte.product_name}.png`
+    const filePath = `${process.cwd()}/sources/Imatges/${image_file}`;
 
-  const image_file = `${producte.product_name}.png`
-  const filePath = `${process.cwd()}/sources/Imatges/${image_file}`;
-
-  pool.getConnection((err, connection) => {
-    if (err) {
-      console.error('Error getting connection from pool:', err);
-      res.status(500).send("Error al obtenir connexió");
-      return;
-    }
-
-    const query = `UPDATE Products SET product_name = ?, description = ?, material = ?, price = ?, stock = ?, image_file = ? WHERE product_id = ?`;
-
-    connection.query(query, [producte.product_name, producte.description, producte.material, producte.price, producte.stock, image_file, producte.product_id], (err, results) => {
+    pool.getConnection((err, connection) => {
       if (err) {
-        console.error('Error:', err);
-        res.status(500).send("Error en actualitzar el producte");
-      } else {
-        // Emit socket event for stock update
-        io.emit('stockActualizado', { product_id: producte.product_id, stock: producte.stock });
-
-        if (producte.string_imatge != undefined && producte.string_imatge != "") {
-          const base64Image = producte.string_imatge.split(';base64,').pop();
-          fs.writeFile(filePath, base64Image, { encoding: 'base64' }, function (err) {
-            if (err) {
-              console.error('Error en actualitzar la imatge:', err);
-              return res.status(500).send("Error en actualitzar la imatge");
-            }
-            console.log('Imatge actualitzada');
-            getProductes(connection);
-            res.json(producte);
-            console.log(`Producte: ${producte.product_name} actualitzat correctament!`);
-          });
-        } else {
-          getProductes(connection);
-          res.json(producte);
-          console.log(`Producte: ${producte.product_name} actualitzat correctament!`);
-        }
+        console.error('Error getting connection from pool:', err);
+        res.status(500).send("Error al obtenir connexió");
+        return;
       }
-      connection.release();
+
+
+      const query = `UPDATE Products SET product_name = ?, description = ?, material = ?, price = ?, stock = ?, image_file = ? WHERE product_id = ?`;
+
+      connection.query(query, [producte.product_name, producte.description, producte.material, producte.price, producte.stock, image_file, producte.product_id], (err, results) => {
+        if (err) {
+          console.error('Error:', err);
+          res.status(500).send("Error en actualitzar el producte");
+        } else {
+          if (producte.string_imatge != undefined && producte.string_imatge != "") {
+            const base64Image = producte.string_imatge.split(';base64,').pop();
+            fs.writeFile(filePath, base64Image, { encoding: 'base64' }, function (err) {
+              if (err) {
+                console.error('Error en actualitzar la imatge:', err);
+                return res.status(500).send("Error en actualitzar la imatge");
+              }
+              console.log('Imatge actualitzada');
+              getProductes(connection);
+              res.send("Producte actualitzat!");
+              console.log(`Producte: ${producte.product_name} actualitzat correctament!`);
+            });
+          } else {
+            const imatgeError = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAAAAACIM/FCAAAChElEQVR4Ae3aMW/TQBxAcb70k91AAiGuGlZAtOlQApWaDiSdklZq2RPUTm1xUWL3PgqSpygkXlh88N54nn7S2Trd3y/CP5IQIUKECBEiRIgQIUKECBEiRIgQIUKECBEiRIgQIUKECBEiRIgQIUKECBEiRIgQIUKECBEiRIgQIUKECPmPIEKECBEiRIgQIeX82+FBO0naB4eTRRkt5P7sNWt1Rw9RQvKThI2SYR4f5OoVW2rfRAYpT6hqHc8WeVHki9mgRdWwiAmyfA9AdrlaW5tlAHxcxQMpK8feRbGxPEkrSREN5ARg/y780V0GMIwFcgXwLg9byvsAN3FA8lfAfr7jYQZ0nqKAfAb21vYVwNruSoEvMUDuE+Ai7IKECZA+RAA5A7JiN6TMgFHzIeUb4DLshoQZ0H1uPGQOvFzVQZYtYNF4yBg4DnWQMAAmjYccArN6yBQ4ajzkAFjUQ+ZAv/GQNpDXQ3Kg03hIAhT1kAJIhLi1/vJl39Ic6Mf3+a2K8PM7BgahtgEwjuKI0lqGjSI8opRdYFb3sk/jODSGEZCVuyFFDzgPzYc8JMBkN2QMpI8RQMIQ2LvdBblNgdM4Lh/aQJaHrf3sAe2nKCDhGqCfb3VEcx1UNQTItlzQ3fYAvoZYIMUHgHRSbiyPU4BPZUSX2JWEbLZcW5v2qByrmMYKxZCq1mA6z4sin08HLapOy8gGPddtttT5HuHobZiwUXr6K85h6KjLWm/PH+MdTy/GR/12knb6g8mPZ38YECJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAh0fUb5q7oCGreEVEAAAAASUVORK5CYII="
+            const base64Image = imatgeError.split(';base64,').pop();
+            fs.writeFile(filePath, base64Image, { encoding: 'base64' }, function (err) {
+              if (err) {
+                console.error('Error en actualitzar la imatge:', err);
+                return res.status(500).send("Error en actualitzar la imatge");
+              }
+              console.log('Imatge actualitzada');
+              getProductes(connection);
+              res.send("Producte actualitzat!");
+              console.log(`Producte: ${producte.product_name} actualitzat correctament!`);
+
+            });
+          }
+        }
+        connection.release();
+      });
     });
-  });
+  } else {
+    esborrarProducte(connection, producte.product_id);
+  }
 });
 
 /*<-------------------------------------- Comandes ---------------------------------------->*/
@@ -443,71 +463,67 @@ app.get("/getComandes", (req, res) => {
 });
 
 app.post("/createComanda", (req, res) => {
-  const novaComanda = {
-    user_id: req.body.user_id,
-    product_id: req.body.product_id,
-    quantity: req.body.quantity,
-    total: req.body.total,
-    status: 'pending'
-  };
+  try {
+    const novaComanda = {
+      user_id: req.query.user_id,
+      product_id: req.query.product_id,
+      total: req.query.total,
+      status: 'waiting'
+    };
 
-
-  pool.getConnection((err, connection) => {
-    if (err) {
-      console.error('Error getting connection from pool:', err);
-      return res.status(500).send("Error al obtenir connexió");
-    }
-
-    const query = `INSERT INTO Orders (user_id, product_id, total, status) VALUES (?, ?, ?, ?)`;
-
-    connection.query(query, [novaComanda.user_id, novaComanda.product_id, novaComanda.total, novaComanda.status], (err, results) => {
-      connection.release();
-
+    pool.getConnection((err, connection) => {
       if (err) {
-        connection.release();
-        return res.status(500).send("Error al iniciar la transacción");
+        console.error('Error getting connection from pool:', err);
+        return res.status(500).send("Error al obtenir connexió");
       }
 
-      const queryComanda = `INSERT INTO Orders (user_id, product_id, quantity, total, status) VALUES (?, ?, ?, ?, ?)`;
-      connection.query(queryComanda, [novaComanda.user_id, novaComanda.product_id, novaComanda.quantity, novaComanda.total, novaComanda.status], (err, results) => {
+      const query = `INSERT INTO Orders (user_id, product_id, total, status) VALUES (?, ?, ?, ?)`;
+
+      connection.query(query, [novaComanda.user_id, novaComanda.product_id, novaComanda.total, novaComanda.status], (err, results) => {
+        connection.release();
+
         if (err) {
-          return connection.rollback(() => {
-            connection.release();
-            res.status(500).send("Error en crear la comanda");
-          });
+          console.error('Error:', err);
+          return res.status(500).send("Error en crear la comanda");
         }
 
-        const queryUpdateStock = `UPDATE Products SET stock = stock - ? WHERE product_id = ?`;
-        connection.query(queryUpdateStock, [novaComanda.quantity, novaComanda.product_id], (err, updateResults) => {
-          if (err) {
-            return connection.rollback(() => {
-              connection.release();
-              res.status(500).send("Error en actualitzar l'estoc");
-            });
+        novaComanda.order_id = results.insertId;
+        comandes.push(novaComanda);
+
+        var comandaAEscriure = {};
+
+        for (const comanda of comandes) {
+          if (comanda.product_id == novaComanda.product_id && comanda.user_id == novaComanda.user_id) {
+            comandaAEscriure = comanda;
           }
+        }
 
-          connection.commit((err) => {
-            if (err) {
-              return connection.rollback(() => {
-                connection.release();
-                res.status(500).send("Error en finalitzar la transacció");
-              });
-            }
+        io.emit('nuevaComanda', novaComanda);
 
-            io.emit('nuevaComanda', { ...novaComanda, order_id: results.insertId });
-            io.emit('stockActualizado', { product_id: novaComanda.product_id, newStock: updateResults.affectedRows });
+        const d = new Date();
+        const avui = d.getDate() + "-" + (d.getMonth() + 1) + "-" + d.getFullYear();
 
-            getComandes(connection);
-            getProductes(connection);
-            res.send("Comanda afegida i estoc actualitzat!");
-            console.log(`Comanda afegida i estoc actualitzat per al producte: ${novaComanda.product_id}`);
-            connection.release();
-          });
+        const filePath = `${process.cwd()}/Historial/order_${comandaAEscriure.order_id}_${avui}.txt`;
+
+        const dades = JSON.stringify(comandaAEscriure, null, 2) + '\n';
+
+        fs.appendFile(filePath, dades, function (err) {
+          if (err) {
+            console.error("Error en afegir a l'historial:", err);
+            return res.status(500).send("Error en afegir a l'historial");
+          }
+          console.log("Comanda Afegida a l'historial.");
+          getProductes(connection);
+          res.send(`Comanda ${comandaAEscriure.order_id} afegida!`);
+          console.log(`Comanda de: ${novaComanda.user_id} afegida correctament!`);
         });
       });
     });
-  });
+  } catch (error) {
+    console.log("Error: ", error);
+  }
 });
+
 
 app.delete("/deleteComanda", (req, res) => {
   const idComandaEliminar = req.query.order_id
@@ -572,8 +588,13 @@ const ChangeStatus = (status) => {
           return res.status(500).json({ error: `Error en actualizar la orden a '${status}'` });
         }
 
-        updateLocalOrderStatus(order_id, status);
-        io.emit('cambioEstado', { order_id, status });
+        if (status == 'canceled' || status == 'confirmed') {
+          esborrarComanda(connection, order_id);
+          actualitzarHistorial(order_id, status)
+        }
+
+        cambioEstado(order_id, status);
+        console.log(`L'ordre: ${order_id} està '${status}'!`);
 
         res.json({ message: `Orden actualizada a '${status}'!` });
         console.log(`La orden: ${order_id} está '${status}'!`);
@@ -836,9 +857,58 @@ function esborrarComanda(connection, order_id) {
     if (err) {
       console.error('Error:', err);
     } else {
-      getUsers(connection);
+      getComandes(connection);
       console.log(`Ordre amb id: ${order_id} eliminada correctament!`)
     }
     connection.release();
+  });
+}
+
+function esborrarProducte(connection, product_id) {
+  const query = `DELETE FROM Products WHERE product_id=?;`;
+  connection.query(query, [product_id], (err, results) => {
+    if (err) {
+      console.error('Error:', err);
+    } else {
+      try {
+        var filePath = `${process.cwd()}/sources/Imatges/${producteEliminar.image_file}`;
+        if (filePath) {
+          fs.unlinkSync(filePath);
+        }
+        getProductes(connection);
+        res.send("Producte eliminat!");
+        console.log(`Producte amb id: ${idProducteEliminar} eliminat correctament!`)
+      } catch (error) {
+        console.log("Error en eliminar la imatge:", error);
+      }
+    }
+    connection.release();
+  });
+}
+
+function actualitzarHistorial(order_id, status) {
+  const filePath = `${process.cwd()}/Historial/`;
+
+  fs.readdir(filePath, (err, files) => {
+    if (err) {
+      console.error('Error llegint el directori:', err);
+      return;
+    }
+
+    const orderFiles = files.filter(file => file.startsWith(`order_${order_id}`));
+
+    orderFiles.forEach(file => {
+      const fullPath = path.join(filePath, file);
+
+      const formattedStatus = `\n<<< ${status} >>>`;
+
+      fs.appendFile(fullPath, formattedStatus, (err) => {
+        if (err) {
+          console.error(`Error en afegir status a ${file}:`, err);
+        } else {
+          console.log(`Status '${status}' afegit a l'arxiu ${file}`);
+        }
+      });
+    });
   });
 }
