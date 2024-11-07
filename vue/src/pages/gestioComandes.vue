@@ -181,7 +181,14 @@ export default {
                     throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
                 }
 
-                const data = await response.json();
+                let data;
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.indexOf("application/json") !== -1) {
+                    data = await response.json();
+                } else {
+                    data = await response.text();
+                }
+
                 console.log('Respuesta del servidor:', data);
 
                 // Update local state
