@@ -12,6 +12,7 @@ const { Server } = require('socket.io');
 const appJSON = express
 const app = express();
 app.use(express.json({ limit: '200mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(cors());
 const port = 21345;
 
@@ -19,6 +20,7 @@ app.use('/sources/Imatges', express.static(path.join(__dirname, 'sources/Imatges
 app.use('/informes', express.static(path.join(__dirname, 'Estadistiques', 'informes')));
 
 var mysql = require('mysql2');
+const { error } = require('console');
 
 var usuaris = [];
 var productes = [];
@@ -260,6 +262,8 @@ app.post("/createProducte", (req, res) => {
     owner_id: req.body.owner_id
   };
 
+  console.log(nouProducte.string_imatge)
+
   const image_file = `${nouProducte.product_name}.png`;
   const filePath = `${process.cwd()}/sources/Imatges/${image_file}`;
 
@@ -333,13 +337,17 @@ app.delete("/deleteProducte", (req, res) => {
             producteEliminar = producte
           }
         }
-        var filePath = `${process.cwd()}/sources/Imatges/${producteEliminar.image_file}`;
+        try {
+          var filePath = `${process.cwd()}/sources/Imatges/${producteEliminar.image_file}`;
         if (filePath){
           fs.unlinkSync(filePath);
         }
         getProductes(connection);
         res.send("Producte eliminat!");
         console.log(`Producte amb id: ${idProducteEliminar} eliminat correctament!`)
+        } catch(error) {
+          console.log("Error en eliminar la imatge:", error);
+        }
       }
       connection.release();
     });
