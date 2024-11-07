@@ -339,13 +339,13 @@ app.delete("/deleteProducte", (req, res) => {
         }
         try {
           var filePath = `${process.cwd()}/sources/Imatges/${producteEliminar.image_file}`;
-        if (filePath){
-          fs.unlinkSync(filePath);
-        }
-        getProductes(connection);
-        res.send("Producte eliminat!");
-        console.log(`Producte amb id: ${idProducteEliminar} eliminat correctament!`)
-        } catch(error) {
+          if (filePath) {
+            fs.unlinkSync(filePath);
+          }
+          getProductes(connection);
+          res.send("Producte eliminat!");
+          console.log(`Producte amb id: ${idProducteEliminar} eliminat correctament!`)
+        } catch (error) {
           console.log("Error en eliminar la imatge:", error);
         }
       }
@@ -431,58 +431,67 @@ app.get("/getComandes", (req, res) => {
 });
 
 app.post("/createComanda", (req, res) => {
-  const novaComanda = {
-    user_id: req.query.user_id,
-    product_id: req.query.product_id,
-    total: req.query.total,
-    status: 'waiting'
-  };
+  try {
+    const novaComanda = {
+      user_id: req.query.user_id,
+      product_id: req.query.product_id,
+      total: req.query.total,
+      status: 'waiting'
+    };
 
-  pool.getConnection((err, connection) => {
-    if (err) {
-      console.error('Error getting connection from pool:', err);
-      return res.status(500).send("Error al obtenir connexió");
-    }
-
-    const query = `INSERT INTO Orders (user_id, product_id, total, status) VALUES (?, ?, ?, ?)`;
-
-    connection.query(query, [novaComanda.user_id, novaComanda.product_id, novaComanda.total, novaComanda.status], (err, results) => {
-      connection.release();
-
+    pool.getConnection((err, connection) => {
       if (err) {
-        console.error('Error:', err);
-        return res.status(500).send("Error en crear la comanda");
+        console.error('Error getting connection from pool:', err);
+        return res.status(500).send("Error al obtenir connexió");
       }
 
-      novaComanda.order_id = results.insertId;
-      comandes.push(novaComanda);
+      const query = `INSERT INTO Orders (user_id, product_id, total, status) VALUES (?, ?, ?, ?)`;
 
-      io.emit('nuevaComanda', novaComanda);
+      connection.query(query, [novaComanda.user_id, novaComanda.product_id, novaComanda.total, novaComanda.status], (err, results) => {
+        connection.release();
 
-      const d = new Date();
-      const avui = d.getDate() + "-" + (d.getMonth() + 1) + "-" + d.getFullYear();
-
-      const filePath = `${process.cwd()}/Historial/user_${novaComanda.user_id}_${avui}.txt`;
-
-      const dades = JSON.stringify(novaComanda, null, 2) + '\n';
-
-      fs.appendFile(filePath, dades, function (err) {
         if (err) {
-          console.error("Error en afegir a l'historial:", err);
-          return res.status(500).send("Error en afegir a l'historial");
+          console.error('Error:', err);
+          return res.status(500).send("Error en crear la comanda");
         }
-        console.log("Comanda Afegida a l'historial.");
-        getProductes(connection);
-        res.send("Comanda afegida!");
-        console.log(`Comanda de: ${novaComanda.user_id} afegida correctament!`);
+
+        novaComanda.order_id = results.insertId;
+        comandes.push(novaComanda);
+
+        var comandaAEscriure = {};
+
+        for (const comanda of comandes) {
+          if (comanda.product_id == novaComanda.product_id && comanda.user_id == novaComanda.user_id) {
+            comandaAEscriure = comanda;
+          }
+        }
+
+        io.emit('nuevaComanda', novaComanda);
+
+        const d = new Date();
+        const avui = d.getDate() + "-" + (d.getMonth() + 1) + "-" + d.getFullYear();
+
+        const filePath = `${process.cwd()}/Historial/order_${comandaAEscriure.order_id}_${avui}.txt`;
+
+        const dades = JSON.stringify(novaComanda, null, 2) + '\n';
+
+        fs.appendFile(filePath, dades, function (err) {
+          if (err) {
+            console.error("Error en afegir a l'historial:", err);
+            return res.status(500).send("Error en afegir a l'historial");
+          }
+          console.log("Comanda Afegida a l'historial.");
+          getProductes(connection);
+          res.send(`Comanda ${comandaAEscriure.order_id} afegida!`);
+          console.log(`Comanda de: ${novaComanda.user_id} afegida correctament!`);
+        });
       });
-
-      res.send("Comanda afegida!");
-      console.log(`Comanda de: ${novaComanda.user_id} afegida correctament!`);
-
     });
-  });
+  } catch (error) {
+    console.log("Error: ", error);
+  }
 });
+
 
 app.delete("/deleteComanda", (req, res) => {
   const idComandaEliminar = req.query.order_id
@@ -620,6 +629,7 @@ function getComandes(connection) {
     }
   });
 }
+
 function esborrarComanda(connection, order_id) {
   const query = `DELETE FROM Orders WHERE order_id=?;`;
   connection.query(query, [order_id], (err, results) => {
