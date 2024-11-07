@@ -1,6 +1,37 @@
 <template>
-    <NavigationDrawer /> 
-
+  <v-app>
+    <NavigationDrawer />
+    <v-main>
+      <v-container class="mt-10">
+        <h1 class="text-h4 mb-6 text-center">{{ TitutoPagina }}</h1>
+        <v-row>
+          <v-col cols="12" md="6" v-for="producto in productosFiltrados" :key="producto.product_id">
+            <v-card class="mt-2 d-flex flex-column">
+              <v-img :src="getProductImage(producto)" height="350px" class="align-end mt-4"></v-img>
+              <v-card-title class="text-black bg-opacity-50 text-center">
+                {{ producto.product_name }}
+              </v-card-title>
+              <v-card-text class="text-center">
+                <p class="description mb-2" style="display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden; width: 70%; margin: 0 auto; text-align: center;">
+                  {{ producto.description }}
+                </p>
+                <p><strong>Estado:</strong> {{ getOrderStatus(producto.product_id) }}</p>
+                <p><strong>Total:</strong> {{ getOrderTotal(producto.product_id) }}</p>
+              </v-card-text>
+              <v-card-actions class="justify-center">
+                <v-btn color="success" @click="aceptarProducto(producto.product_id)">
+                  Confirmar
+                </v-btn>
+                <v-btn color="error" @click="rechazarProducto(producto.product_id)">
+                  Rechazar
+                </v-btn>
+              </v-card-actions>
+            </v-card>
+          </v-col>
+        </v-row>
+      </v-container>
+    </v-main>
+  </v-app>
 </template>
 
 <script>

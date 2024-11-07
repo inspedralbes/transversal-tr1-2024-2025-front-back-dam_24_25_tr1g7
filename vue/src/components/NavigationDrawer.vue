@@ -1,6 +1,6 @@
 <template>
     <v-navigation-drawer app permanent color="#4F7942">
-      <v-list-item>
+      <v-list-item @click="goToRoute('/')">
         <v-list-item-content>
           <v-list-item-title class="title">Panel de Control</v-list-item-title>
         </v-list-item-content>

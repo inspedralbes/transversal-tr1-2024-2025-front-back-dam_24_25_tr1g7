@@ -1,6 +1,6 @@
 <template>
     <v-app>
-    <NavigationDrawer />
+        <NavigationDrawer />
 
         <v-main>
             <v-container class="mt-10">
@@ -163,23 +163,35 @@ export default {
                 this.mensaje = 'Error al obtener productos.';
             }
         },
-        async cambiarEstado(order_id, nuevoEstado) {
+        async cambiarEstado(orderId, nuevoEstado) {
             try {
-                console.log(`Cambiando estado de la comanda ${order_id} a ${nuevoEstado}`);
-                const response = await fetch(`${this.urlBase}/confirmed?order_id=${order_id}`, {
-                    method: 'PUT'
+                console.log(`Cambiando estado de la comanda ${orderId} a ${nuevoEstado}`);
+                const url = `${this.urlBase}/${nuevoEstado}?order_id=${orderId}`;
+                console.log('URL de la petición:', url);
+
+                const response = await fetch(url, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
                 });
+
                 if (!response.ok) {
                     const errorText = await response.text();
-                    throw new Error(errorText || 'Error al actualizar el estado');
+                    throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
                 }
-                const data = await response.json();
-                console.log(`Respuesta del servidor:`, data);
 
+                const data = await response.json();
+                console.log('Respuesta del servidor:', data);
+
+                // Update local state
+                this.actualizarEstadoComanda({ order_id: orderId, status: nuevoEstado });
+
+                this.mensaje = `Estado actualizado con éxito a ${nuevoEstado}.`;
                 this.dialogoActivo = false;
             } catch (error) {
                 console.error('Error al cambiar el estado de la comanda:', error);
-                alert(`Error al cambiar el estado: ${error.message}`);
+                this.mensaje = `Error al cambiar el estado: ${error.message}`;
             }
         },
         getDescription(productId) {
