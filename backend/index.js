@@ -589,16 +589,17 @@ const ChangeStatus = (status) => {
           return res.status(500).json({ error: `Error en actualizar la orden a '${status}'` });
         }
 
-        if (status == 'canceled' || status == 'confirmed') {
-          esborrarComanda(connection, order_id);
-          actualitzarHistorial(order_id, status)
+        // If the status is 'canceled' or 'confirmed', remove the order
+        if (status === 'canceled' || status === 'confirmed') {
+          esborrarComanda(connection, order_id); // Function to delete the order from the database
+          actualitzarHistorial(order_id, status); // Update history if necessary
         }
 
-        cambioEstado(order_id, status);
-        console.log(`L'ordre: ${order_id} està '${status}'!`);
+        // Emit the change via socket
+        io.emit('cambioEstado', { order_id, status });
 
+        console.log(`L'ordre: ${order_id} està '${status}'!`);
         res.json({ message: `Orden actualizada a '${status}'!` });
-        console.log(`La orden: ${order_id} está '${status}'!`);
         connection.release();
       });
     });
