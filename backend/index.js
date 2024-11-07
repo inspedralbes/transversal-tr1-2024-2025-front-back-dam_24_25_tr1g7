@@ -16,7 +16,8 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(cors());
 const port = 21345;
 
-app.use('/sources/Imatges', express.static(path.join(__dirname, 'sources/Imatges')))
+app.use('/sources/Imatges', express.static(path.join(__dirname, 'sources/Imatges')));
+app.use('/Historial', express.static(path.join(__dirname, 'sources/Imatges')))
 app.use('/informes', express.static(path.join(__dirname, 'Estadistiques', 'informes')));
 
 var mysql = require('mysql2');
@@ -47,23 +48,23 @@ io.on('connection', (socket) => {
 
 /*<-------------------------------------- Connexions ---------------------------------------->*/
 
- var pool = mysql.createPool({
+ /*var pool = mysql.createPool({
    host: "localhost",
    user: "root",
    password: "",
    database: 'a23alechasan_PR1',
    port: 3306,
    connectionLimit: 10
- });
+ }); */
 
-/*var pool = mysql.createPool({
+var pool = mysql.createPool({
   host: 'localhost',
   user: 'a23alechasan_PR1',
   password: 'Skogsvardet_2024',
   database: 'a23alechasan_PR1',
   port: 3306,
   connectionLimit: 10
-}); */
+}); 
 
 /*<-------------------------------------- Estadistiques ---------------------------------------->*/
 app.get('/listarInformes', (req, res) => {
