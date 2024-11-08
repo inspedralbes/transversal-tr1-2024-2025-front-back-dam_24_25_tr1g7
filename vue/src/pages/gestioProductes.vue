@@ -80,6 +80,17 @@ export default {
       this.socket.on('stockActualizado', this.manejarActualizacionStock);
       this.socket.on('nuevoProducto', this.agregarNuevoProducto);
       this.socket.on('productoEliminado', this.eliminarProductoLocal);
+      this.socket.on('productoActualizado', this.actualizarProductoLocal);
+    },
+    actualizarProductoLocal(productoActualizado) {
+      const index = this.productos.findIndex(p => p.product_id === productoActualizado.product_id);
+      if (index !== -1) {
+        this.productos.splice(index, 1, productoActualizado);
+        this.$forceUpdate();
+      } else {
+        console.warn(`Producto con id ${productoActualizado.product_id} no encontrado`);
+        this.obtenerProductos();
+      }
     },
     manejarActualizacionStock({ product_id, stock }) {
       console.log('Stock actualizado:', product_id, stock);
@@ -143,17 +154,9 @@ export default {
           throw new Error(`Error en actualitzar el producte: ${errorText}`);
         }
 
-        const updatedProduct = await response.json();
-        console.log('Respuesta del servidor:', updatedProduct);
+        const result = await response.json();
+        console.log('Respuesta del servidor:', result);
 
-        const index = this.productos.findIndex(p => p.product_id === this.productoEditado.product_id);
-        if (index !== -1) {
-          this.productos.splice(index, 1, updatedProduct);
-        } else {
-          console.warn('Producto no encontrado en la lista local');
-        }
-
-        this.$forceUpdate();
         this.cerrarDialogoEditar();
         alert('Producte actualitzat amb èxit');
       } catch (error) {
