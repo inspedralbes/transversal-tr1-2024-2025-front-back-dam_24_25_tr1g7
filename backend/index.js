@@ -52,23 +52,23 @@ io.on('connection', (socket) => {
 
 /*<-------------------------------------- Connexions ---------------------------------------->*/
 
-// var pool = mysql.createPool({
-//   host: "localhost",
-//   user: "root",
-//   password: "",
-//   database: 'a23alechasan_PR1',
-//   port: 3306,
-//   connectionLimit: 10
-// });
-
 var pool = mysql.createPool({
+  host: "localhost",
+  user: "root",
+  password: "",
+  database: 'a23alechasan_PR1',
+  port: 3306,
+  connectionLimit: 10
+}); 
+
+/*var pool = mysql.createPool({
   host: 'localhost',
   user: 'a23alechasan_PR1',
   password: 'Skogsvardet_2024',
   database: 'a23alechasan_PR1',
   port: 3306,
   connectionLimit: 10
-});
+});*/
 
 /*<-------------------------------------- Productes ---------------------------------------->*/
 
@@ -571,18 +571,20 @@ app.delete("/deleteComanda", (req, res) => {
 
 const cambioEstado = (order_id, status) => {
   console.log(`Emitiendo cambio de estado: order_id=${order_id}, status=${status}`);
-  io.emit('cambioEstado', { order_id, status });
 
+  io.emit('cambioEstado', { order_id, status });
 
   const comanda = comandes.find(c => c.order_id === Number(order_id));
   if (comanda) {
-    comanda.status = status;
+    comanda.status = status; 
     console.log(`L'ordre: ${order_id} està '${status}'!`);
 
     if (status === 'canceled') {
       io.emit('eliminarComanda', order_id);
-      comandes = comandes.filter(c => c.order_id !== Number(order_id));
+      comandes = comandes.filter(c => c.order_id !== Number(order_id)); 
     }
+  } else {
+    console.warn(`Comanda con id ${order_id} no encontrada para actualizar el estado`);
   }
 };
 
