@@ -17,7 +17,7 @@ app.use(cors());
 const port = 21345;
 
 app.use('/sources/Imatges', express.static(path.join(__dirname, 'sources/Imatges')));
-app.use('/Historial', express.static(path.join(__dirname, 'sources/Imatges')))
+app.use('/Historial', express.static(path.join(__dirname, 'Historial')))
 app.use('/informes', express.static(path.join(__dirname, 'Estadistiques', 'informes')));
 
 var mysql = require('mysql2');
@@ -26,6 +26,7 @@ const { error } = require('console');
 var usuaris = [];
 var productes = [];
 var comandes = [];
+let historial = [];
 
 let informesGenerats = {};
 let ultimaDataEstadistiques = null;
@@ -67,6 +68,12 @@ var pool = mysql.createPool({
   database: 'a23alechasan_PR1',
   port: 3306,
   connectionLimit: 10
+});
+
+/*<-------------------------------------- Productes ---------------------------------------->*/
+
+app.get("/getHistorial", (req, res) => {
+    res.json(historial);
 });
 
 /*<-------------------------------------- Estadistiques ---------------------------------------->*/
@@ -821,9 +828,46 @@ pool.getConnection((err, connection) => {
   getUsers(connection);
   getProductes(connection);
   getComandes(connection);
+  getHistorial();
 
   connection.release();
 });
+
+function getHistorial() {
+  const directoryPath = path.join(__dirname, 'Historial');
+
+  if (!fs.existsSync(directoryPath)) {
+    console.error("La carpeta 'Historial' no existe.");
+    return;
+  }
+
+  const files = fs.readdirSync(directoryPath);
+
+  files.forEach(file => {
+    const filePath = path.join(directoryPath, file);
+
+    if (fs.lstatSync(filePath).isFile()) {
+      try {
+        const content = fs.readFileSync(filePath, 'utf8');
+
+        const [jsonPart, statusPart] = content.split(/(?=\<\<\<)/);
+
+        let jsonData = {};
+        if (jsonPart) {
+          jsonData = JSON.parse(jsonPart);
+        }
+
+        if (statusPart) {
+          jsonData.status_final = statusPart.trim();
+        }
+
+        historial.push(jsonData);
+      } catch (err) {
+        console.error(`Error al leer o parsear el archivo ${file}:`, err);
+      }
+    }
+  });
+}
 
 function getUsers(connection) {
   connection.query('SELECT * FROM Users', (err, results) => {
