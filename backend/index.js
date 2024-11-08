@@ -481,6 +481,7 @@ app.post("/createComanda", (req, res) => {
       const query = `INSERT INTO Orders (user_id, product_id, total, status) VALUES (?, ?, ?, ?)`;
 
       connection.query(query, [novaComanda.user_id, novaComanda.product_id, novaComanda.total, novaComanda.status], (err, results) => {
+        connection.release();
 
         if (err) {
           console.error('Error:', err);
@@ -517,7 +518,6 @@ app.post("/createComanda", (req, res) => {
           res.send(`Comanda ${comandaAEscriure.order_id} afegida!`);
           console.log(`Comanda de: ${novaComanda.user_id} afegida correctament!`);
 
-          connection.release();
         });
       });
     });
