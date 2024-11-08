@@ -28,30 +28,32 @@
             </v-container>
 
             <v-dialog v-model="dialogoActivo" max-width="600px">
-    <v-card>
-        <v-btn icon @click="dialogoActivo = false" class="ml-auto mt-2 mr-2">
-            <v-icon color="grey">mdi-close</v-icon>
-        </v-btn>
-        <v-img :src="getImageSrc(comandaSeleccionada.product.image_file)" height="350px" width="50%"
-            class="my-2 mx-auto" />
-        <v-card-text class="text-center">
-            <strong>{{ comandaSeleccionada.product.product_name }}</strong><br />
-            <strong>Descripción:</strong> {{ comandaSeleccionada.product.description }}<br />
-        </v-card-text>
-        <v-card-text class="text-center">
-            <strong>Estado:</strong>
-            <v-select v-model="nuevoEstado" :items="estados" label="Cambiar estado" />
-            <br />
-            <strong>Precio:</strong> {{ comandaSeleccionada.total }}€<br />
-        </v-card-text>
-        <v-card-actions class="justify-center">
-            <v-btn color="primary" @click="cambiarEstado(comandaSeleccionada.order_id, nuevoEstado)">
-                Cambiar Estado
-            </v-btn>
-        </v-card-actions>
-    </v-card>
-</v-dialog>
-
+                <v-card>
+                    <v-btn icon @click="dialogoActivo = false" class="ml-auto mt-2 mr-2">
+                        <v-icon color="grey">mdi-close</v-icon>
+                    </v-btn>
+                    <v-img :src="getImageSrc(comandaSeleccionada.product_id)" height="350px" width="50%"
+                        class="my-2 mx-auto" />
+                    <v-card-text class="text-center">
+                        {{ comandaSeleccionada.description }}
+                    </v-card-text>
+                    <v-card-text class="text-center">
+                        <strong>Estado:</strong>
+                        <v-select v-model="nuevoEstado" :items="estados" label="Cambiar estado" />
+                        <br />
+                        <strong>Precio:</strong> {{ comandaSeleccionada.total }}€<br />
+                    </v-card-text>
+                    <v-card-text class="text-center">
+                        <strong>{{ productoSeleccionado.product_name }}</strong><br />
+                        <strong>Descripción:</strong> {{ productoSeleccionado.description }}<br />
+                    </v-card-text>
+                    <v-card-actions class="justify-center">
+                        <v-btn color="primary" @click="cambiarEstado(comandaSeleccionada.order_id, nuevoEstado)">
+                            Cambiar Estado
+                        </v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
         </v-main>
     </v-app>
 </template>
@@ -112,45 +114,39 @@ export default {
             this.comandes = this.comandes.filter(c => c.order_id !== parseInt(order_id));
             this.obtenerProductos();
         },
-        actualizarEstadoComanda({ order_id, status, product }) {
-    console.log('Actualizando estado de comanda:', order_id, status);
-
-    const comandaIndex = this.comandes.findIndex(c => c.order_id === parseInt(order_id));
-
-    if (comandaIndex !== -1) {
-        this.comandes[comandaIndex].status = status;
-        if (product) {
-            this.comandes[comandaIndex].product = product; // Asigna el producto a la comanda
-        }
-        this.$forceUpdate(); // Fuerza la reactividad
-    } else {
-        console.warn(`Comanda con id ${order_id} no encontrada`);
-        this.obtenerComandes(); // Refresca la lista si no se encuentra
-    }
-},
-
-agregarNuevaComanda(nuevaComanda) {
-    console.log('Nueva comanda recibida:', nuevaComanda);
-    this.comandes.push(nuevaComanda);
-    this.$forceUpdate(); // Fuerza la reactividad
-
-    // Llama a obtenerDetallesProducto para cada producto de la nueva comanda
-    this.obtenerDetallesProducto(nuevaComanda.product_id);
-},
+        actualizarEstadoComanda({ order_id, status }) {
+            console.log('Actualizando estado de comanda:', order_id, status);
+            const comanda = this.comandes.find(c => c.order_id === parseInt(order_id));
+            if (comanda) {
+                comanda.status = status;
+                if (status === 'confirmed' || status === 'canceled') {
+                    this.comandes = this.comandes.filter(c => c.order_id !== parseInt(order_id));
+                }
+                this.$forceUpdate();
+            } else {
+                console.warn(`Comanda con id ${order_id} no encontrada`);
+                this.obtenerComandes();
+            }
+        },
+        agregarNuevaComanda(nuevaComanda) {
+            console.log('Nueva comanda recibida:', nuevaComanda);
+            this.comandes.push(nuevaComanda);
+            this.$forceUpdate();
+        },
         async obtenerDetallesProducto(productId) {
-    try {
-        const response = await fetch(`${this.urlProductos}?product_id=${productId}`);
-        if (!response.ok) {
-            throw new Error('Error en la respuesta de la red');
-        }
-        const producto = await response.json();
-        if (producto && !this.productos.some(p => p.product_id === producto.product_id)) {
-            this.productos.push(producto); // Añadir solo si no existe
-        }
-    } catch (error) {
-        console.error('Error al obtener detalles del producto:', error);
-    }
-},
+            try {
+                const response = await fetch(`${this.urlProductos}?product_id=${productId}`);
+                if (!response.ok) {
+                    throw new Error('Error en la respuesta de la red');
+                }
+                const producto = await response.json();
+                if (!this.productos.some(p => p.product_id === producto.product_id)) {
+                    this.productos.push(producto);
+                }
+            } catch (error) {
+                console.error('Error al obtener detalles del producto:', error);
+            }
+        },
         async obtenerComandes() {
             try {
                 const response = await fetch(this.urlComandes);
