@@ -52,14 +52,14 @@ io.on('connection', (socket) => {
 
 /*<-------------------------------------- Connexions ---------------------------------------->*/
 
-/*var pool = mysql.createPool({
-  host: "localhost",
-  user: "root",
-  password: "",
-  database: 'a23alechasan_PR1',
-  port: 3306,
-  connectionLimit: 10
-}); */
+// var pool = mysql.createPool({
+//   host: "localhost",
+//   user: "root",
+//   password: "",
+//   database: 'a23alechasan_PR1',
+//   port: 3306,
+//   connectionLimit: 10
+// });
 
 var pool = mysql.createPool({
   host: 'localhost',
@@ -73,13 +73,13 @@ var pool = mysql.createPool({
 /*<-------------------------------------- Productes ---------------------------------------->*/
 
 app.get("/getHistorial", (req, res) => {
-    res.json(historial);
+  res.json(historial);
 });
 
 /*<-------------------------------------- Estadistiques ---------------------------------------->*/
 
 executarPython();
-setInterval(executarPython, 86400000); 
+setInterval(executarPython, 86400000);
 
 function executarPython() {
   const pythonScript = './Estadistiques/analizar_ventas.py';
@@ -586,30 +586,60 @@ const cambioEstado = (order_id, status) => {
   }
 };
 
+app.put("/updateOrderStatus", (req, res) => {
+  const { order_id, status } = req.query;
+
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error getting connection from pool:', err);
+      return res.status(500).send("Error al obtenir connexió");
+    }
+
+    const query = `UPDATE Orders SET status = ? WHERE order_id = ?`;
+    connection.query(query, [status, order_id], (err, results) => {
+      connection.release();
+
+      if (err) {
+        console.error('Error:', err);
+        return res.status(500).send("Error en actualitzar l'estat de la comanda");
+      }
+
+      // Emit a socket event to notify clients of the status change
+      io.emit('orderStatusChanged', { order_id, status });
+
+      res.send("Estat de la comanda actualitzat!");
+      console.log(`Comanda amb id: ${order_id} actualitzada a l'estat: ${status}`);
+    });
+  });
+});
+
 const ChangeStatus = (status) => {
   return (req, res) => {
     const order_id = req.query.order_id;
     console.log(`Updating order ${order_id} to status: ${status}`);
-
+    
     pool.getConnection((err, connection) => {
       if (err) {
         console.error('Error getting connection from pool:', err);
         return res.status(500).json({ error: "Error al obtener conexión" });
       }
-
+      
       const query = `UPDATE Orders SET status = ? WHERE order_id = ?`;
       connection.query(query, [status, order_id], (err, results) => {
+        connection.release();
         if (err) {
           console.error('Error:', err);
-          connection.release();
           return res.status(500).json({ error: `Error en actualizar la orden a '${status}'` });
         }
-
+        
+        // Update local state
+        updateLocalOrderStatus(order_id, status);
+        
+        // Emit socket event
         io.emit('cambioEstado', { order_id, status });
-
+        
         console.log(`L'ordre: ${order_id} està '${status}'!`);
         res.json({ message: `Orden actualizada a '${status}'!` });
-        connection.release();
       });
     });
   };
@@ -704,13 +734,36 @@ app.put("/confirmed", (req, res) => {
 });
 
 function updateLocalOrderStatus(order_id, status) {
-  const order = comandes.find(o => o.order_id === parseInt(order_id));
-  if (order) {
-    order.status = status;
+  const orderIndex = comandes.findIndex(o => o.order_id === parseInt(order_id));
+  if (orderIndex !== -1) {
+    comandes[orderIndex].status = status;
     console.log(`Estado de la comanda ${order_id} actualizado localmente a ${status}`);
   } else {
     console.log(`Comanda ${order_id} no encontrada en la lista local`);
+    // Optionally, fetch the updated order from the database and add it to the local list
+    fetchOrderFromDatabase(order_id);
   }
+}
+
+function fetchOrderFromDatabase(order_id) {
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error getting connection from pool:', err);
+      return;
+    }
+    const query = `SELECT * FROM Orders WHERE order_id = ?`;
+    connection.query(query, [order_id], (err, results) => {
+      connection.release();
+      if (err) {
+        console.error('Error fetching order from database:', err);
+        return;
+      }
+      if (results.length > 0) {
+        comandes.push(results[0]);
+        console.log(`Comanda ${order_id} añadida a la lista local desde la base de datos`);
+      }
+    });
+  });
 }
 
 function updateLocalProductStock(product_id, newStock) {
@@ -788,7 +841,7 @@ app.put("/canceled", (req, res) => {
 
                 updateLocalOrderStatus(order_id, 'canceled');
                 updateLocalProductStock(product_id, newStock);
-                console.log(`Actualizando historial para la orden ${order_id} con estado 'confirmed'`);
+                console.log(`Actualizando historial para la orden ${order_id} con estado 'canceled'`);
                 actualitzarHistorial(order_id, 'canceled');
 
                 io.emit('cambioEstado', { order_id, status: 'canceled' });

@@ -12,7 +12,8 @@
                 {{ producto.product_name }}
               </v-card-title>
               <v-card-text class="text-center">
-                <p class="description mb-2" style="display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden; width: 70%; margin: 0 auto; text-align: center;">
+                <p class="description mb-2"
+                  style="display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden; width: 70%; margin: 0 auto; text-align: center;">
                   {{ producto.description }}
                 </p>
                 <p><strong>Estado:</strong> {{ getOrderStatus(producto.product_id) }}</p>
@@ -39,7 +40,7 @@ import { io } from 'socket.io-client';
 import NavigationDrawer from '@/components/NavigationDrawer.vue';
 
 export default {
-  
+
   data() {
     return {
       productos: [],
@@ -75,8 +76,8 @@ export default {
   },
   mounted() {
     this.conectarSocket();
-    this.obtenerProductos();
     this.obtenerComandes();
+    this.obtenerProductos();
   },
   methods: {
     conectarSocket() {
@@ -85,16 +86,25 @@ export default {
         console.log('Conectado al servidor Socket.IO');
       });
       this.socket.on('cambioEstado', this.actualizarEstadoComanda);
+      this.socket.on('stockActualizado', this.actualizarStockProducto);
     },
     actualizarEstadoComanda({ order_id, status }) {
       const comanda = this.comandes.find(c => c.order_id === parseInt(order_id));
       if (comanda) {
-        comanda.status = status;
         if (status !== 'verified') {
           this.comandes = this.comandes.filter(c => c.order_id !== parseInt(order_id));
+        } else {
+          comanda.status = status;
         }
       } else if (status === 'verified') {
         this.obtenerNuevaComanda(order_id);
+      }
+    },
+    actualizarStockProducto({ product_id, stock }) {
+      const producto = this.productos.find(p => p.product_id === parseInt(product_id));
+      if (producto) {
+        producto.stock = stock;
+        console.log(`Stock actualizado para producto ${product_id}: ${stock}`);
       }
     },
     async obtenerNuevaComanda(order_id) {
@@ -148,7 +158,7 @@ export default {
           method: 'PUT',
         });
         if (!response.ok) throw new Error('Error al actualizar el estado del producto');
-        alert(`Producto ${producto.product_id} aceptado y confirmado.`);
+        // The socket will handle the update
       } catch (error) {
         console.error('Error al aceptar producto:', error);
         alert('Error al aceptar producto.');
@@ -162,7 +172,7 @@ export default {
             method: 'PUT',
           });
           if (!response.ok) throw new Error('Error al actualizar el estado del producto');
-          alert(`Producto ${producto.product_id} rechazado.`);
+          // The socket will handle the update
         } catch (error) {
           console.error('Error al rechazar producto:', error);
           alert('Error al rechazar producto.');
@@ -172,6 +182,8 @@ export default {
   },
   beforeUnmount() {
     if (this.socket) {
+      this.socket.off('cambioEstado', this.actualizarEstadoComanda);
+      this.socket.off('stockActualizado', this.actualizarStockProducto);
       this.socket.disconnect();
     }
   }

@@ -81,13 +81,17 @@ export default {
     },
     computed: {
         comandesFiltradas() {
-            return this.comandes.filter(comanda => comanda.status !== 'verified');
+            return this.comandes.filter(comanda =>
+                comanda.status !== 'confirmed' &&
+                comanda.status !== 'canceled' &&
+                comanda.status !== 'verified'
+            );
         }
     },
     mounted() {
+        this.conectarSocket();
         this.obtenerComandes();
         this.obtenerProductos();
-        this.conectarSocket();
     },
     methods: {
         conectarSocket() {
@@ -97,12 +101,13 @@ export default {
             });
             this.socket.on('cambioEstado', this.actualizarEstadoComanda);
             this.socket.on('stockActualizado', this.actualizarStockProducto);
+            this.socket.on('nuevaComanda', this.agregarNuevaComanda);
         },
         actualizarStockProducto({ product_id, stock }) {
-            const producto = this.productos.find(p => p.product_id === product_id);
+            const producto = this.productos.find(p => p.product_id === parseInt(product_id));
             if (producto) {
                 producto.stock = stock;
-                console.log(`Stock actualizado para producto ${product_id}: ${stock}`);
+                this.$forceUpdate();
             }
         },
         eliminarComanda(order_id) {
@@ -111,19 +116,16 @@ export default {
         },
         actualizarEstadoComanda({ order_id, status }) {
             console.log('Actualizando estado de comanda:', order_id, status);
-
-            // Find and update the corresponding order
-            const comandaIndex = this.comandes.findIndex(c => c.order_id === parseInt(order_id));
-
-            if (comandaIndex !== -1) { // Order exists
-                // Remove the order from local state
-                this.comandes.splice(comandaIndex, 1); // Remove from array
-
-                // Force reactivity update
+            const comanda = this.comandes.find(c => c.order_id === parseInt(order_id));
+            if (comanda) {
+                comanda.status = status;
+                if (status === 'confirmed' || status === 'canceled') {
+                    this.comandes = this.comandes.filter(c => c.order_id !== parseInt(order_id));
+                }
                 this.$forceUpdate();
-            } else { // If not found, refresh orders
+            } else {
                 console.warn(`Comanda con id ${order_id} no encontrada`);
-                this.obtenerComandes(); // Refresh the list if not found
+                this.obtenerComandes();
             }
         },
         agregarNuevaComanda(nuevaComanda) {
@@ -149,13 +151,7 @@ export default {
             try {
                 const response = await fetch(this.urlComandes);
                 if (!response.ok) throw new Error('Error en la respuesta de la red');
-
                 this.comandes = await response.json();
-                console.log('Comandes obtenidas:', this.comandes);
-
-                // Optionally filter out confirmed or canceled orders here if needed
-                this.comandes = this.comandes.filter(c => c.status !== 'confirmed' && c.status !== 'canceled');
-
             } catch (error) {
                 console.error('Error al obtener comandes:', error);
             }
@@ -200,8 +196,8 @@ export default {
 
                 console.log('Respuesta del servidor:', data);
 
-                // Update local state
-                this.actualizarEstadoComanda({ order_id: orderId, status: nuevoEstado });
+                // No actualizamos el estado localmente aquí
+                // La actualización se manejará a través del evento de socket
 
                 this.mensaje = `Estado actualizado con éxito a ${nuevoEstado}.`;
                 this.dialogoActivo = false;
@@ -233,6 +229,8 @@ export default {
     },
     beforeUnmount() {
         if (this.socket) {
+            this.socket.off('cambioEstado', this.actualizarEstadoComanda);
+            this.socket.off('stockActualizado', this.actualizarStockProducto);
             this.socket.disconnect();
         }
     }
