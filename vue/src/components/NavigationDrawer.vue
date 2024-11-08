@@ -30,6 +30,13 @@
         <v-list-item-title>Estadístiques</v-list-item-title>
       </v-list-item>
 
+      <v-list-item @click="goToRoute('/veureHistorial')">
+        <v-list-item-icon>
+          <v-icon>mdi-file-document</v-icon>
+        </v-list-item-icon>
+        <v-list-item-title>Historial</v-list-item-title>
+      </v-list-item>
+
       <v-list-item>
         <v-list-item-title>
         </v-list-item-title>
