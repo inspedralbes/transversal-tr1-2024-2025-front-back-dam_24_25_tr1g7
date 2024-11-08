@@ -47,14 +47,14 @@ io.on('connection', (socket) => {
 
 /*<-------------------------------------- Connexions ---------------------------------------->*/
 
- var pool = mysql.createPool({
-   host: "localhost",
-   user: "root",
-   password: "",
-   database: 'a23alechasan_PR1',
-   port: 3306,
-   connectionLimit: 10
- });
+var pool = mysql.createPool({
+  host: "localhost",
+  user: "root",
+  password: "",
+  database: 'a23alechasan_PR1',
+  port: 3306,
+  connectionLimit: 10
+});
 
 /*var pool = mysql.createPool({
   host: 'localhost',
@@ -398,29 +398,27 @@ app.put("/updateProducte", (req, res) => {
     pool.getConnection((err, connection) => {
       if (err) {
         console.error('Error getting connection from pool:', err);
-        res.status(500).send("Error al obtenir connexió");
-        return;
+        return res.status(500).json({ error: "Error al obtenir connexió" });
       }
 
-
       const query = `UPDATE Products SET product_name = ?, description = ?, material = ?, price = ?, stock = ?, image_file = ? WHERE product_id = ?`;
-
       connection.query(query, [producte.product_name, producte.description, producte.material, producte.price, producte.stock, image_file, producte.product_id], (err, results) => {
         if (err) {
           console.error('Error:', err);
-          res.status(500).send("Error en actualitzar el producte");
-        } else {
+          connection.release();
+          return res.status(500).json({ error: "Error en actualitzar el producte" });
+        }
+
+        const updateImage = () => {
           if (producte.string_imatge != undefined && producte.string_imatge != "") {
             const base64Image = producte.string_imatge.split(';base64,').pop();
             fs.writeFile(filePath, base64Image, { encoding: 'base64' }, function (err) {
               if (err) {
                 console.error('Error en actualitzar la imatge:', err);
-                return res.status(500).send("Error en actualitzar la imatge");
+                return res.status(500).json({ error: "Error en actualitzar la imatge" });
               }
               console.log('Imatge actualitzada');
-              getProductes(connection);
-              res.send("Producte actualitzat!");
-              console.log(`Producte: ${producte.product_name} actualitzat correctament!`);
+              finishUpdate();
             });
           } else {
             const imatgeError = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAAAAACIM/FCAAAChElEQVR4Ae3aMW/TQBxAcb70k91AAiGuGlZAtOlQApWaDiSdklZq2RPUTm1xUWL3PgqSpygkXlh88N54nn7S2Trd3y/CP5IQIUKECBEiRIgQIUKECBEiRIgQIUKECBEiRIgQIUKECBEiRIgQIUKECBEiRIgQIUKECBEiRIgQIUKECPmPIEKECBEiRIgQIeX82+FBO0naB4eTRRkt5P7sNWt1Rw9RQvKThI2SYR4f5OoVW2rfRAYpT6hqHc8WeVHki9mgRdWwiAmyfA9AdrlaW5tlAHxcxQMpK8feRbGxPEkrSREN5ARg/y780V0GMIwFcgXwLg9byvsAN3FA8lfAfr7jYQZ0nqKAfAb21vYVwNruSoEvMUDuE+Ai7IKECZA+RAA5A7JiN6TMgFHzIeUb4DLshoQZ0H1uPGQOvFzVQZYtYNF4yBg4DnWQMAAmjYccArN6yBQ4ajzkAFjUQ+ZAv/GQNpDXQ3Kg03hIAhT1kAJIhLi1/vJl39Ic6Mf3+a2K8PM7BgahtgEwjuKI0lqGjSI8opRdYFb3sk/jODSGEZCVuyFFDzgPzYc8JMBkN2QMpI8RQMIQ2LvdBblNgdM4Lh/aQJaHrf3sAe2nKCDhGqCfb3VEcx1UNQTItlzQ3fYAvoZYIMUHgHRSbiyPU4BPZUSX2JWEbLZcW5v2qByrmMYKxZCq1mA6z4sin08HLapOy8gGPddtttT5HuHobZiwUXr6K85h6KjLWm/PH+MdTy/GR/12knb6g8mPZ38YECJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAhQoQIESJEiBAh0fUb5q7oCGreEVEAAAAASUVORK5CYII="
@@ -428,21 +426,43 @@ app.put("/updateProducte", (req, res) => {
             fs.writeFile(filePath, base64Image, { encoding: 'base64' }, function (err) {
               if (err) {
                 console.error('Error en actualitzar la imatge:', err);
-                return res.status(500).send("Error en actualitzar la imatge");
+                return res.status(500).json({ error: "Error en actualitzar la imatge" });
               }
               console.log('Imatge actualitzada');
-              getProductes(connection);
-              res.send("Producte actualitzat!");
-              console.log(`Producte: ${producte.product_name} actualitzat correctament!`);
-
+              finishUpdate();
             });
           }
-        }
-        connection.release();
+        };
+
+        const finishUpdate = () => {
+          getProductes(connection);
+          connection.release();
+
+          const updatedProduct = {
+            product_id: producte.product_id,
+            product_name: producte.product_name,
+            description: producte.description,
+            material: producte.material,
+            price: producte.price,
+            stock: producte.stock,
+            image_file: image_file
+          };
+
+          io.emit('productoActualizado', updatedProduct);
+
+          res.json({
+            message: "Producte actualitzat!",
+            product: updatedProduct
+          });
+
+          console.log(`Producte: ${producte.product_name} actualitzat correctament!`);
+        };
+
+        updateImage();
       });
     });
   } else {
-    esborrarProducte(connection, producte.product_id);
+    esborrarProducte(req, res, producte.product_id);
   }
 });
 
