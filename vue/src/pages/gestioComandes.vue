@@ -222,7 +222,7 @@ export default {
             const producto = this.productos.find(p => p.product_id === productId);
             return producto
                 ? `${this.urlBase}/sources/Imatges/${producto.image_file}`
-                : `${this.urlBase}/sources/Imatges/imagen_no_disponible.jpg`;
+                : `${this.urlBase}/sources/Imatges/undefined.png`;
         },
         dialogoComanda(comanda) {
             this.comandaSeleccionada = comanda;
