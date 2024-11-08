@@ -598,13 +598,6 @@ const ChangeStatus = (status) => {
           return res.status(500).json({ error: `Error en actualizar la orden a '${status}'` });
         }
 
-        // If the status is 'canceled' or 'confirmed', remove the order
-        if (status === 'canceled' || status === 'confirmed') {
-          esborrarComanda(connection, order_id); // Function to delete the order from the database
-          actualitzarHistorial(order_id, status); // Update history if necessary
-        }
-
-        // Emit the change via socket
         io.emit('cambioEstado', { order_id, status });
 
         console.log(`L'ordre: ${order_id} està '${status}'!`);
@@ -685,6 +678,8 @@ app.put("/confirmed", (req, res) => {
 
                 updateLocalOrderStatus(order_id, 'confirmed');
                 updateLocalProductStock(product_id, newStock);
+                console.log(`Actualizando historial para la orden ${order_id} con estado 'confirmed'`);
+                actualitzarHistorial(order_id, 'confirmed');
 
                 io.emit('cambioEstado', { order_id, status: 'confirmed' });
                 io.emit('stockActualizado', { product_id, stock: newStock });
@@ -786,6 +781,8 @@ app.put("/canceled", (req, res) => {
 
                 updateLocalOrderStatus(order_id, 'canceled');
                 updateLocalProductStock(product_id, newStock);
+                console.log(`Actualizando historial para la orden ${order_id} con estado 'confirmed'`);
+                actualitzarHistorial(order_id, 'canceled');
 
                 io.emit('cambioEstado', { order_id, status: 'canceled' });
                 io.emit('stockActualizado', { product_id, stock: newStock });
@@ -898,28 +895,32 @@ function esborrarProducte(connection, product_id) {
 }
 
 function actualitzarHistorial(order_id, status) {
-  const filePath = `${process.cwd()}/Historial/`;
+
+  const filePath = path.resolve(process.cwd(), 'Historial');
 
   fs.readdir(filePath, (err, files) => {
     if (err) {
-      console.error('Error llegint el directori:', err);
+      console.error('Error leyendo el directorio:', err);
       return;
     }
 
     const orderFiles = files.filter(file => file.startsWith(`order_${order_id}`));
 
+    if (orderFiles.length === 0) {
+      console.warn(`No se encontraron archivos para la orden ${order_id}`);
+      return;
+    }
+
     orderFiles.forEach(file => {
       const fullPath = path.join(filePath, file);
-
       const formattedStatus = `\n<<< ${status} >>>`;
 
-      fs.appendFile(fullPath, formattedStatus, (err) => {
-        if (err) {
-          console.error(`Error en afegir status a ${file}:`, err);
-        } else {
-          console.log(`Status '${status}' afegit a l'arxiu ${file}`);
-        }
-      });
+      try {
+        fs.appendFileSync(fullPath, formattedStatus);
+        console.log(`Status '${status}' añadido al archivo ${file}`);
+      } catch (err) {
+        console.error(`Error al añadir status a ${file}:`, err);
+      }
     });
   });
 }
