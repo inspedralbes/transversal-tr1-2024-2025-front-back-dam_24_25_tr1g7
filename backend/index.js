@@ -481,48 +481,41 @@ app.post("/createComanda", (req, res) => {
       const query = `INSERT INTO Orders (user_id, product_id, total, status) VALUES (?, ?, ?, ?)`;
 
       connection.query(query, [novaComanda.user_id, novaComanda.product_id, novaComanda.total, novaComanda.status], (err, results) => {
-        connection.release();
-
         if (err) {
-          console.error('Error:', err);
+          connection.release();
+          console.error('Error en crear la comanda:', err);
           return res.status(500).send("Error en crear la comanda");
         }
 
         novaComanda.order_id = results.insertId;
         comandes.push(novaComanda);
 
-        var comandaAEscriure = {};
-
-        for (const comanda of comandes) {
-          if (comanda.product_id == novaComanda.product_id && comanda.user_id == novaComanda.user_id) {
-            comandaAEscriure = comanda;
-          }
-        }
-
-        io.emit('nuevaComanda', novaComanda);
-
         const d = new Date();
         const avui = d.getDate() + "-" + (d.getMonth() + 1) + "-" + d.getFullYear();
+        const filePath = `${process.cwd()}/Historial`;
+        
+        if (!fs.existsSync(filePath)) {
+          fs.mkdirSync(filePath);
+        }
 
-        const filePath = `${process.cwd()}/Historial/order_${comandaAEscriure.order_id}_${avui}.txt`;
+        const fullFilePath = `${filePath}/order_${novaComanda.order_id}_${avui}.txt`;
+        const dades = JSON.stringify(novaComanda, null, 2) + '\n';
 
-        const dades = JSON.stringify(comandaAEscriure, null, 2) + '\n';
-
-        fs.appendFile(filePath, dades, function (err) {
+        fs.appendFile(fullFilePath, dades, (err) => {
+          connection.release();
           if (err) {
             console.error("Error en afegir a l'historial:", err);
             return res.status(500).send("Error en afegir a l'historial");
           }
           console.log("Comanda Afegida a l'historial.");
           getProductes(connection);
-          res.send(`Comanda ${comandaAEscriure.order_id} afegida!`);
-          console.log(`Comanda de: ${novaComanda.user_id} afegida correctament!`);
-
+          res.send(`Comanda ${novaComanda.order_id} afegida!`);
         });
       });
     });
   } catch (error) {
-    console.log("Error: ", error);
+    console.error("Error:", error);
+    res.status(500).send("Error inesperat");
   }
 });
 
@@ -801,7 +794,7 @@ app.put("/canceled", (req, res) => {
 // })
 
 server.listen(port, () => {
-  console.log(`Servidor corriendo en http://localhost:${port}`);
+  console.log(`Servidor corriendo en ${port}`);
 });
 
 pool.getConnection((err, connection) => {
