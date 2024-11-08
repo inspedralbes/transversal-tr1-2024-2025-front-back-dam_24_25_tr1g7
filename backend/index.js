@@ -72,7 +72,7 @@ var pool = mysql.createPool({
 /*<-------------------------------------- Estadistiques ---------------------------------------->*/
 
 executarPython();
-setInterval(executarPython, 60000); // Llamar cada 1 minuto, ajustable según necesidades.
+setInterval(executarPython, 86400000); 
 
 function executarPython() {
   const pythonScript = './Estadistiques/analizar_ventas.py';
@@ -124,7 +124,7 @@ function executarPython() {
 
       ultimaDataEstadistiques = new Date().toLocaleString();
       console.log(`Informes generados a las ${ultimaDataEstadistiques}`);
-      informesGenerats = informes;  // Aquí actualizamos los informes globalmente.
+      informesGenerats = informes;
     });
   });
 };
