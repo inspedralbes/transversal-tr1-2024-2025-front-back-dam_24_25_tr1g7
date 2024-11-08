@@ -27,6 +27,9 @@ var usuaris = [];
 var productes = [];
 var comandes = [];
 
+let informesGenerats = {};
+let ultimaDataEstadistiques = null;
+
 /*<-------------------------------------- Sockets ---------------------------------------->*/
 
 const server = http.createServer(app);
@@ -67,7 +70,11 @@ var pool = mysql.createPool({
 });
 
 /*<-------------------------------------- Estadistiques ---------------------------------------->*/
-app.get('/listarInformes', (req, res) => {
+
+executarPython();
+setInterval(executarPython, 60000); // Llamar cada 1 minuto, ajustable según necesidades.
+
+function executarPython() {
   const pythonScript = './Estadistiques/analizar_ventas.py';
 
   const pythonProcess = spawn('python3', [pythonScript]);
@@ -82,68 +89,56 @@ app.get('/listarInformes', (req, res) => {
 
   pythonProcess.on('close', (code) => {
     const informesPath = path.join(__dirname, 'Estadistiques', 'informes');
-
     console.log('Path de informes:', informesPath);
 
     fs.readdir(informesPath, (err, files) => {
       if (err) {
         console.error('Error al leer el directorio de informes:', err);
-        return res.status(500).json({ error: 'Error al leer los informes' });
+        return;
       }
-      fs.readdir(informesPath, (err, files) => {
-        if (err) {
-          console.error('Error al leer el directorio de informes:', err);
-          return res.status(500).json({ error: 'Error al leer los informes' });
+
+      const informes = {
+        fechas: {},
+        semanales: [],
+        mensuales: []
+      };
+
+      files.forEach((file) => {
+        const filePath = path.join(informesPath, file);
+        try {
+          if (fs.statSync(filePath).isDirectory()) {
+            if (file === 'semanales' || file === 'mensuales') {
+              const imagenes = fs.readdirSync(filePath)
+                .filter(img => img.endsWith('.png') || img.endsWith('.jpg') || img.endsWith('.jpeg'));
+              informes[file] = imagenes;
+            } else {
+              const imagenes = fs.readdirSync(filePath)
+                .filter(img => img.endsWith('.png') || img.endsWith('.jpg') || img.endsWith('.jpeg'));
+              informes.fechas[file] = imagenes;
+            }
+          }
+        } catch (error) {
+          console.error(`Error procesando el directorio ${filePath}:`, error);
         }
-
-        const informes = {
-          fechas: {},
-          semanales: [],
-          mensuales: []
-        };
-
-        files.forEach((file) => {
-          const filePath = path.join(informesPath, file);
-          try {
-            if (fs.statSync(filePath).isDirectory()) {
-              if (file === 'semanales' || file === 'mensuales') {
-                const imagenes = fs.readdirSync(filePath)
-                  .filter(img => img.endsWith('.png') || img.endsWith('.jpg') || img.endsWith('.jpeg'));
-                informes[file] = imagenes;
-              } else {
-                const imagenes = fs.readdirSync(filePath)
-                  .filter(img => img.endsWith('.png') || img.endsWith('.jpg') || img.endsWith('.jpeg'));
-                informes.fechas[file] = imagenes;
-              }
-            }
-          } catch (error) {
-            console.error(`Error procesando el directorio ${filePath}:`, error);
-          }
-        });
-        files.forEach((file) => {
-          const filePath = path.join(informesPath, file);
-          try {
-            if (fs.statSync(filePath).isDirectory()) {
-              if (file === 'semanales' || file === 'mensuales') {
-                const imagenes = fs.readdirSync(filePath)
-                  .filter(img => img.endsWith('.png') || img.endsWith('.jpg') || img.endsWith('.jpeg'));
-                informes[file] = imagenes;
-              } else {
-                const imagenes = fs.readdirSync(filePath)
-                  .filter(img => img.endsWith('.png') || img.endsWith('.jpg') || img.endsWith('.jpeg'));
-                informes.fechas[file] = imagenes;
-              }
-            }
-          } catch (error) {
-            console.error(`Error procesando el directorio ${filePath}:`, error);
-          }
-        });
-
-        res.json(informes);
       });
-    });
 
+      ultimaDataEstadistiques = new Date().toLocaleString();
+      console.log(`Informes generados a las ${ultimaDataEstadistiques}`);
+      informesGenerats = informes;  // Aquí actualizamos los informes globalmente.
+    });
   });
+};
+
+app.get('/listarInformes', (req, res) => {
+  res.json(informesGenerats);
+});
+
+app.get('/ultimaGeneracioEstadistiques', (req, res) => {
+  if (ultimaDataEstadistiques) {
+    res.json({ ultimaGeneracio: ultimaDataEstadistiques });
+  } else {
+    res.json({ mensaje: "Encara no s'han generat estadistiques" });
+  }
 });
 
 /*<-------------------------------------- Usuaris ---------------------------------------->*/
