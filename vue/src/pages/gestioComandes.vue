@@ -72,9 +72,9 @@ export default {
             productoSeleccionado: {},
             nuevoEstado: '',
             estados: ['waiting', 'pending', 'shipped', 'verified', 'confirmed', 'canceled'],
-            urlBase: 'http://tr1g7.dam.inspedralbes.cat:21345',
-            urlComandes: 'http://tr1g7.dam.inspedralbes.cat:21345/getComandes',
-            urlProductos: 'http://tr1g7.dam.inspedralbes.cat:21345/getProductes',
+            urlBase: 'http://localhost:21345',
+            urlComandes: 'http://localhost:21345/getComandes',
+            urlProductos: 'http://localhost:21345/getProductes',
             mensaje: '',
             socket: null,
         };
@@ -86,6 +86,9 @@ export default {
                 comanda.status !== 'canceled' &&
                 comanda.status !== 'verified'
             );
+        },
+        productosFiltrados() {
+            return this.productos;
         }
     },
     mounted() {
@@ -119,19 +122,36 @@ export default {
             const comanda = this.comandes.find(c => c.order_id === parseInt(order_id));
             if (comanda) {
                 comanda.status = status;
-                if (status === 'confirmed' || status === 'canceled') {
-                    this.comandes = this.comandes.filter(c => c.order_id !== parseInt(order_id));
+                if (status === 'confirmed' || status === 'canceled' || status === 'verified') {
+                    // No eliminamos la comanda, solo actualizamos su estado
+                    console.log(`Comanda ${order_id} actualizada a estado ${status}`);
                 }
                 this.$forceUpdate();
             } else {
                 console.warn(`Comanda con id ${order_id} no encontrada`);
-                this.obtenerComandes();
+                this.obtenerComandes(); // Recargar todas las comandas si no se encuentra
             }
         },
         agregarNuevaComanda(nuevaComanda) {
             console.log('Nueva comanda recibida:', nuevaComanda);
-            this.comandes.push(nuevaComanda);
-            this.$forceUpdate();
+            // Convert string values to appropriate types
+            nuevaComanda.order_id = parseInt(nuevaComanda.order_id);
+            nuevaComanda.product_id = parseInt(nuevaComanda.product_id);
+            nuevaComanda.user_id = parseInt(nuevaComanda.user_id);
+            nuevaComanda.total = parseFloat(nuevaComanda.total);
+
+            // Check if the comanda already exists
+            const index = this.comandes.findIndex(c => c.order_id === nuevaComanda.order_id);
+            if (index !== -1) {
+                // Update existing comanda
+                this.$set(this.comandes, index, nuevaComanda);
+            } else {
+                // Add new comanda
+                this.comandes.push(nuevaComanda);
+            }
+
+            // Ensure the product details are available
+            this.obtenerDetallesProducto(nuevaComanda.product_id);
         },
         async obtenerDetallesProducto(productId) {
             try {
@@ -140,7 +160,10 @@ export default {
                     throw new Error('Error en la respuesta de la red');
                 }
                 const producto = await response.json();
-                if (!this.productos.some(p => p.product_id === producto.product_id)) {
+                const index = this.productos.findIndex(p => p.product_id === producto.product_id);
+                if (index !== -1) {
+                    this.$set(this.productos, index, producto);
+                } else {
                     this.productos.push(producto);
                 }
             } catch (error) {
@@ -151,7 +174,9 @@ export default {
             try {
                 const response = await fetch(this.urlComandes);
                 if (!response.ok) throw new Error('Error en la respuesta de la red');
-                this.comandes = await response.json();
+                const allComandes = await response.json();
+                console.log('Todas las comandes obtenidas:', allComandes);
+                this.comandes = allComandes;
             } catch (error) {
                 console.error('Error al obtener comandes:', error);
             }
@@ -162,7 +187,9 @@ export default {
                 if (!response.ok) {
                     throw new Error('Error en la respuesta de la red');
                 }
-                this.productos = await response.json();
+                const allProductos = await response.json();
+                console.log('Todos los productos obtenidos:', allProductos);
+                this.productos = allProductos;
             } catch (error) {
                 console.error('Error al obtener productos:', error);
                 this.mensaje = 'Error al obtener productos.';
@@ -212,7 +239,7 @@ export default {
         },
         getName(productId) {
             const producto = this.productos.find(p => p.product_id === productId);
-            return producto ? producto.product_name : 'Nom no disponible';
+            return producto ? producto.product_name : 'Nombre no disponible';
         },
         getImageSrc(productId) {
             const producto = this.productos.find(p => p.product_id === productId);

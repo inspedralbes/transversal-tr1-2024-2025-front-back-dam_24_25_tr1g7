@@ -56,10 +56,10 @@ var pool = mysql.createPool({
   host: "localhost",
   user: "root",
   password: "",
-  database: 'a23alechasan_PR1',
+  database: 'TR1',
   port: 3306,
   connectionLimit: 10
-}); 
+});
 
 /*var pool = mysql.createPool({
   host: 'localhost',
@@ -265,12 +265,11 @@ app.put("/updateUsuari", (req, res) => {
 app.get("/getProductes", (req, res) => {
   if (req.query.product_id) {
     const idProducte = Number(req.query.product_id);
-    for (const producte of productes) {
-      if (producte.product_id == idProducte) {
-        res.json(producte);
-      } else {
-        res.send(`No hi ha cap producte amb id: ${idProducte}`);
-      }
+    const producte = productes.find(p => p.product_id === idProducte);
+    if (producte) {
+      res.json(producte);
+    } else {
+      res.status(404).json({ error: `No hi ha cap producte amb id: ${idProducte}` });
     }
   } else {
     res.json(productes);
@@ -472,32 +471,37 @@ app.put("/updateProducte", (req, res) => {
 /*<-------------------------------------- Comandes ---------------------------------------->*/
 
 app.get("/getComandes", (req, res) => {
-  if (req.query.order_id) {
-    const idComanda = Number(req.query.order_id);
-    for (const comanda of comandes) {
-      if (comanda.order_id == idComanda) {
-        return res.json(comanda);
-      }
+  pool.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error getting connection from pool:', err);
+      return res.status(500).send("Error al obtenir connexió");
     }
-    return res.status(404).send(`No hi ha cap comanda amb id: ${idComanda}`);
-  } else {
-    res.json(comandes);
-  }
+
+    const query = `SELECT * FROM Orders`;
+    connection.query(query, (err, results) => {
+      connection.release();
+      if (err) {
+        console.error('Error:', err);
+        return res.status(500).send("Error en obtenir les comandes");
+      }
+      res.json(results);
+    });
+  });
 });
 
 app.post("/createComanda", (req, res) => {
   try {
     const novaComanda = {
-      user_id: req.query.user_id,
-      product_id: req.query.product_id,
-      total: req.query.total,
+      user_id: req.body.user_id,
+      product_id: req.body.product_id,
+      total: req.body.total,
       status: 'waiting'
     };
 
     pool.getConnection((err, connection) => {
       if (err) {
         console.error('Error getting connection from pool:', err);
-        return res.status(500).send("Error al obtenir connexió");
+        return res.status(500).json({ error: "Error al obtenir connexió" });
       }
 
       const query = `INSERT INTO Orders (user_id, product_id, total, status) VALUES (?, ?, ?, ?)`;
@@ -506,11 +510,14 @@ app.post("/createComanda", (req, res) => {
         if (err) {
           connection.release();
           console.error('Error en crear la comanda:', err);
-          return res.status(500).send("Error en crear la comanda");
+          return res.status(500).json({ error: "Error en crear la comanda" });
         }
 
         novaComanda.order_id = results.insertId;
         comandes.push(novaComanda);
+
+        // Emit the new order event with all fields
+        io.emit('nuevaComanda', novaComanda);
 
         const d = new Date();
         const avui = d.getDate() + "-" + (d.getMonth() + 1) + "-" + d.getFullYear();
@@ -527,20 +534,18 @@ app.post("/createComanda", (req, res) => {
           connection.release();
           if (err) {
             console.error("Error en afegir a l'historial:", err);
-            return res.status(500).send("Error en afegir a l'historial");
+            return res.status(500).json({ error: "Error en afegir a l'historial" });
           }
           console.log("Comanda Afegida a l'historial.");
-          getProductes(connection);
-          res.send(`Comanda ${novaComanda.order_id} afegida!`);
+          res.status(201).json({ message: `Comanda ${novaComanda.order_id} afegida!`, comanda: novaComanda });
         });
       });
     });
   } catch (error) {
     console.error("Error:", error);
-    res.status(500).send("Error inesperat");
+    res.status(500).json({ error: "Error inesperat" });
   }
 });
-
 
 app.delete("/deleteComanda", (req, res) => {
   const idComandaEliminar = req.query.order_id
@@ -576,12 +581,12 @@ const cambioEstado = (order_id, status) => {
 
   const comanda = comandes.find(c => c.order_id === Number(order_id));
   if (comanda) {
-    comanda.status = status; 
+    comanda.status = status;
     console.log(`L'ordre: ${order_id} està '${status}'!`);
 
     if (status === 'canceled') {
       io.emit('eliminarComanda', order_id);
-      comandes = comandes.filter(c => c.order_id !== Number(order_id)); 
+      comandes = comandes.filter(c => c.order_id !== Number(order_id));
     }
   } else {
     console.warn(`Comanda con id ${order_id} no encontrada para actualizar el estado`);
@@ -619,29 +624,25 @@ const ChangeStatus = (status) => {
   return (req, res) => {
     const order_id = req.query.order_id;
     console.log(`Updating order ${order_id} to status: ${status}`);
-    
+
     pool.getConnection((err, connection) => {
       if (err) {
         console.error('Error getting connection from pool:', err);
         return res.status(500).json({ error: "Error al obtener conexión" });
       }
-      
+
       const query = `UPDATE Orders SET status = ? WHERE order_id = ?`;
       connection.query(query, [status, order_id], (err, results) => {
-        connection.release();
         if (err) {
           console.error('Error:', err);
+          connection.release();
           return res.status(500).json({ error: `Error en actualizar la orden a '${status}'` });
         }
-        
-        // Update local state
-        updateLocalOrderStatus(order_id, status);
-        
-        // Emit socket event
+
         io.emit('cambioEstado', { order_id, status });
-        
         console.log(`L'ordre: ${order_id} està '${status}'!`);
         res.json({ message: `Orden actualizada a '${status}'!` });
+        connection.release();
       });
     });
   };
